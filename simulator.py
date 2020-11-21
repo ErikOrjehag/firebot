@@ -89,6 +89,7 @@ def main():
         if keys[key.RIGHT] or keys[key.D]:
             angular -= max_ang
 
+        """
         linear = max_lin
         if robot.hits[3]<0.2:
             angular = max_ang
@@ -98,6 +99,7 @@ def main():
             linear = 0.2*max_lin
         elif robot.hits[0]<0.2:
             linear = -0.2*max_lin
+        """
         
         linear *= dt
         angular *= dt
