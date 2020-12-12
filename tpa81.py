@@ -70,14 +70,17 @@ class TPA81():
 
 if __name__ == '__main__':
 
-    tpa = TPA81()
+    tpa = TPA81(bus_num=1)
 
     #tpa.changeAddress(0)
 
     print('Version: ', tpa.softwareVersion())
-    #print('Ambient Temperature: ', tpa.ambientTemperature())
+    print('Ambient Temperature: ', tpa.ambientTemperature())
 
-    #for i in range(len(tpa.TPA81_PIXEL)):
-    #    print('Pixel', (i + 1), ': ', tpa.pixelTemp(i))
+    for i in range(len(tpa.TPA81_PIXEL)):
+        print('Pixel', (i + 1), ': ', tpa.pixelTemp(i))
 
     #print('Highest Temp: ', tpa.highestTemp())
+
+    print("Close")
+    #tpa.bus.close()

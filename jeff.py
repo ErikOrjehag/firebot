@@ -1,25 +1,55 @@
-print("hej")
-print("hej")
-print("hej")
-x=1
-print("hej")
-print("hej")
+
 
 import RPi.GPIO as GPIO
 from time import sleep
 
-GPIO.setmode(GPIO.BOARD)
-GPIO.setup(12, GPIO.OUT)
+servoPin = 12
 
-pwm=GPIO.PWM(12, 50)
+GPIO.setmode(GPIO.BOARD)
+GPIO.setup(servoPin, GPIO.OUT)
+
+pwm=GPIO.PWM(servoPin, 50)
 pwm.start(0)
 
-pwm.ChangeDutyCycle(5) # left -90 deg position
-sleep(1)
-pwm.ChangeDutyCycle(7.5) # neutral position
-sleep(1)
-pwm.ChangeDutyCycle(10) # right +90 deg position
-sleep(1)
+
+
+def setAngle(angle):
+    duty = angle / 18 + 3
+    GPIO.output(servoPin, True)
+    pwm.ChangeDutyCycle(duty)
+    sleep(1)
+    GPIO.output(servoPin, False)
+    pwm.ChangeDutyCycle(duty)
+
+class Snuffer:
+    def __init__(self, port):
+        self.port = port
+
+    def snuff(self):
+        setAngle(10)
+
+    def unSnuff(self):
+        setAngle(170)
+
+
+snuffer = Snuffer(port=4)
+snuffer.snuff()
+
+# setAngle(0)
+
+# sleep(2)
+
+
+# for vinkel in range(0,150,30):
+#     setAngle(vinkel)
+#     sleep(1)
+
+
+# setAngle(0)
+# sleep(1)
+# setAngle(90)
+# sleep(3)
+# setAngle(110)
 
 pwm.stop()
 GPIO.cleanup()
