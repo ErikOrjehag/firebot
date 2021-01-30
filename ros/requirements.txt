@@ -1,0 +1,4 @@
+smbus
+RPi.GPIO
+pyglet
+numpy
