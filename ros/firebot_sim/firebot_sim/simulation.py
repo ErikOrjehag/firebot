@@ -11,6 +11,8 @@ import numpy as np
 class Simulation:
 
     def __init__(self):
+        self.linear = 0
+        self.angular = 0
         self.map = Map()
         self.robot = Robot()
         self.keys = key.KeyStateHandler()
@@ -20,21 +22,9 @@ class Simulation:
         self.renderer.window.push_handlers(self.keys)
 
     def update(self, dt):
-        max_lin = 0.6
-        max_ang = 3.0
-        linear = 0.0
-        angular = 0.0
-        if self.keys[key.UP] or self.keys[key.W]:
-            linear += max_lin
-        if self.keys[key.DOWN] or self.keys[key.S]:
-            linear -= max_lin
-        if self.keys[key.LEFT] or self.keys[key.A]:
-            angular += max_ang
-        if self.keys[key.RIGHT] or self.keys[key.D]:
-            angular -= max_ang
-        self.robot.pos += dt * linear * np.array([
+        self.robot.pos += dt * self.linear * np.array([
             cos(self.robot.angle), sin(self.robot.angle)])
-        self.robot.angle += dt * angular
+        self.robot.angle += dt * self.angular
 
         self.robot.hits = calc_hits(self.robot.pos,
                          self.robot.angle,

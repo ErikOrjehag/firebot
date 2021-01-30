@@ -90,7 +90,7 @@ class Renderer:
         
         if self.pf is not None:
             for i in range(self.pf.N):
-                with transform(self.pf.pos[i,0], self.pf.pos[i,1], self.angle[i]):
+                with transform(self.pf.pos[i,0], self.pf.pos[i,1], self.pf.angle[i]):
                     self.pf1_b.draw()
             if self.pf.best_pos is not None:
                 with transform(self.pf.best_pos[0], self.pf.best_pos[1], self.pf.best_angle):
