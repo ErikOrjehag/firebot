@@ -25,6 +25,7 @@ class Renderer:
         self.map = None
         self.map_b = None
         self.robot = None
+        self.path = None
         self.robot_b = None
         self.pf = None
         self.pf1_b = None
@@ -72,6 +73,9 @@ class Renderer:
             ('v2f', 0.2*shape.flatten()),
             ('c3B', (0,0,255)*len(shape)))
 
+    def set_path(self, node):
+        self.path = node
+
     def on_draw(self):
         self.window.clear()
         pyglet.gl.glPushMatrix()
@@ -99,4 +103,24 @@ class Renderer:
                 with transform(self.pf.kf_pos[0], self.pf.kf_pos[1], self.pf.kf_angle):
                     self.pf3_b.draw()
 
+        node = self.path
+        while node is not None:
+            with transform(node.x, node.y, node.angle):
+                self.pf1_b.draw()
+            node = node.previous
+
         pyglet.gl.glPopMatrix()
+
+def main():
+    from hybridastar import hybrid_astar_search
+    from mapp import Map
+    mapp = Map()
+    renderer = Renderer("Test Renderer")
+    renderer.set_map(mapp)
+    final_node = hybrid_astar_search(mapp.walls, 0.2, 0.2, 0.0, 1.5, 1.5, 3.1415)
+    renderer.set_pf(None) # lol
+    renderer.set_path(final_node)
+    pyglet.app.run()
+
+if __name__ == '__main__':
+    main()
