@@ -31,3 +31,14 @@ class Simulation:
                          self.robot.sensor_dirs, 
                          self.robot.sensor_offsets, 
                          self.map.walls)
+
+
+def main(args=None):
+    import pyglet
+    simulation = Simulation()
+    pyglet.clock.schedule_interval(simulation.update, 1 / 60.0)
+    pyglet.app.run()
+
+
+if __name__ == '__main__':
+    main()
