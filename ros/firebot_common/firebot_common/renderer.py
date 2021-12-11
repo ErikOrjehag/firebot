@@ -56,7 +56,7 @@ class Renderer:
         self.robot_lines_gl = self.robot_b.add(len(robot.lines)*2, pyglet.gl.GL_LINES, None,
             ('v2f', robot.lines.flatten()),
             ('c3B', (255,0,0)*len(robot.lines)*2))
-    
+
     def set_pf(self, pf):
         self.pf = pf
         self.pf1_b = pyglet.graphics.Batch()
@@ -114,10 +114,13 @@ class Renderer:
 def main():
     from hybridastar import hybrid_astar_search
     from mapp import Map
+    import time
     mapp = Map()
     renderer = Renderer("Test Renderer")
     renderer.set_map(mapp)
-    final_node = hybrid_astar_search(mapp.walls, 0.2, 0.2, 0.0, 1.5, 1.5, 3.1415)
+    ts = time.time()
+    final_node = hybrid_astar_search(mapp.walls, 0.5, 2.0, 0.0, 2.0, 0.7, 3.1415)
+    print(f'{time.time() - ts:.3f} seconds')
     renderer.set_pf(None) # lol
     renderer.set_path(final_node)
     pyglet.app.run()

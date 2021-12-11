@@ -129,7 +129,7 @@ def get_children_of_node(node, walls, goal_x, goal_y, DRIVE_DIST, MAX_STEER):
 
     children = []
     for drive_dist in [DRIVE_DIST, -DRIVE_DIST]:
-        for steer in [-MAX_STEER, 0.0, MAX_STEER]:
+        for steer in [-MAX_STEER, -MAX_STEER/2.0, 0.0, MAX_STEER/2.0, MAX_STEER]:
             turn_angle = (drive_dist / wheel_base) * math.tan(steer)
             
             if abs(turn_angle) < 1e-4:
@@ -163,13 +163,13 @@ def get_children_of_node(node, walls, goal_x, goal_y, DRIVE_DIST, MAX_STEER):
 
 def hybrid_astar_search(walls, start_x, start_y, start_angle, goal_x, goal_y, goal_angle = None):
     MAP_SIZE = 2.42
-    N_CELLS = 30
+    N_CELLS = 20
     CELL_SIZE = MAP_SIZE / N_CELLS
-    ANGLE_RESOLUTION = math.radians(15)
+    ANGLE_RESOLUTION = math.radians(20.0)
     DRIVE_DIST = math.sqrt((CELL_SIZE ** 2) * 2) + 0.01
-    MAX_STEER = math.radians(20)
-    POS_ACCURACY = CELL_SIZE / 2.0
-    ANGLE_ACCURACY = math.radians(10)
+    MAX_STEER = math.radians(30)
+    POS_ACCURACY = CELL_SIZE
+    ANGLE_ACCURACY = math.radians(30)
 
     # For debugging
     n_pruned_nodes = 0
@@ -227,6 +227,12 @@ def hybrid_astar_search(walls, start_x, start_y, start_angle, goal_x, goal_y, go
         children = get_children_of_node(next_node, walls, goal_x, goal_y, DRIVE_DIST, MAX_STEER)
         for child in children:
             child_cell_pos = (int(child.x // CELL_SIZE), int(child.y // CELL_SIZE))
+            if child_cell_pos[0] < 0 or child_cell_pos[1] < 0:
+                n_pruned_nodes += 1
+                continue
+            if child_cell_pos[0] >= N_CELLS or child_cell_pos[1] >= N_CELLS:
+                n_pruned_nodes += 1
+                continue
             child_cell_heading = int(child.angle // ANGLE_RESOLUTION)
             closed_in_child_cell = closed_cells[child_cell_pos[0]][child_cell_pos[1]]
             if child_cell_heading in closed_in_child_cell:
