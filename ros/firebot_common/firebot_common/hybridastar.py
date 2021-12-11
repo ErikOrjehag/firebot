@@ -2,16 +2,56 @@
 import numpy as np
 import math
 import functools
+from numba import njit
 
-@functools.total_ordering
-class Node():
+from firebot_common.wall_collision import is_wall_collision
+from numba import int64, float64, boolean, deferred_type, optional, types, typed    # import the types
+from numba.experimental import jitclass
 
+spec = [
+    ('value', int64),               # a simple scalar field
+    ('array', float64[:]),          # an array field
+]
+
+@jitclass(spec)
+class Bag(object):
+    def __init__(self, value):
+        self.value = value
+        self.array = np.zeros(value, dtype=np.float64)
+
+    @property
+    def size(self):
+        return self.array.size
+
+    def increment(self, val):
+        for i in range(self.size):
+            self.array[i] += val
+        return self.array
+
+    @staticmethod
+    def add(x, y):
+        return x+y
+
+node_type = deferred_type()
+
+spec = [
+    ('heap_index', int64),
+    ('g_cost', float64),
+    ('h_cost', float64),
+    ('reversing', boolean),
+    ('pos', float64[:]),
+    ('angle', float64),
+    ('previous', optional(node_type)),
+]
+
+@jitclass(spec)
+class Node:
     def __init__(self, previous, posx, posy, angle, reversing):
-        self.heap_index = None
+        self.heap_index = -1
         self.g_cost = 0
         self.h_cost = 0
         self.reversing = reversing
-        self.pos = np.hstack((posx, posy))
+        self.pos = np.array([posx, posy])
         self.angle = angle
         self.previous = previous
 
@@ -47,19 +87,35 @@ class Node():
     def y(self, y):
         self.pos[1] = y
 
-    def __eq__(self, other):
+    def eq(self, other):
         return self.f_cost == other.f_cost
 
-    def __lt__(self, other):
+    def lt(self, other):
         if self.f_cost == other.f_cost:
             return self.h_cost < other.h_cost
         else:
             return self.f_cost < other.f_cost
+    
+    def lte(self, other):
+        return self.eq(other) or self.lt(other)
+    
+    def gte(self, other):
+        return not (self.lt(other))
+    
+    def gt(self, other):
+        return not self.eq(other) and self.gte(other)
 
-class Heap():
+node_type.define(Node.class_type.instance_type)
+
+spec = [
+    ('_items', types.ListType(Node.class_type.instance_type)),
+]
+
+@jitclass(spec)
+class Heap:
 
     def __init__(self):
-        self._items = []
+        self._items = typed.List([Node(None, 0.0, 0.0, 0.0, False) for _ in range(0)])
 
     def __repr__(self):
         return self._repr_recuse(0, 0)
@@ -74,7 +130,7 @@ class Heap():
         l = self._repr_recuse(left, depth+1)
         return (r + '\n' if r else '') + m + ('\n' + l if l else '')
 
-    def __len__(self):
+    def size(self):
         return len(self._items)
 
     def add(self, item):
@@ -102,9 +158,9 @@ class Heap():
                 return
             swap_index = left
             if right < len(self._items):
-                if self._items[right] < self._items[left]:
+                if self._items[right].lt(self._items[left]):
                     swap_index = right
-            if item <= self._items[swap_index]:
+            if item.lte(self._items[swap_index]):
                 return
             self._swap(item, self._items[swap_index])
 
@@ -113,7 +169,7 @@ class Heap():
             if item.heap_index == 0:
                 return
             parent = (item.heap_index - 1) // 2
-            if item >= self._items[parent]:
+            if item.gte(self._items[parent]):
                 return
             self._swap(item, self._items[parent])
 
@@ -121,17 +177,19 @@ class Heap():
         self._items[itemA.heap_index], self._items[itemB.heap_index] = itemB, itemA
         itemA.heap_index, itemB.heap_index = itemB.heap_index, itemA.heap_index
 
+@njit
 def heuristic(node, to_x, to_y):
     return math.sqrt((to_x - node.x)**2 + (to_y - node.y)**2)
 
+@njit
 def get_children_of_node(node, walls, goal_x, goal_y, DRIVE_DIST, MAX_STEER):
     wheel_base = 0.15 # TODO: From Robot()
 
     children = []
     for drive_dist in [DRIVE_DIST, -DRIVE_DIST]:
         for steer in [-MAX_STEER, -MAX_STEER/2.0, 0.0, MAX_STEER/2.0, MAX_STEER]:
+            """
             turn_angle = (drive_dist / wheel_base) * math.tan(steer)
-            
             if abs(turn_angle) < 1e-4:
                 new_x = node.x + drive_dist * math.cos(node.angle) # TODO: sin/cos?
                 new_y = node.y + drive_dist * math.sin(node.angle)
@@ -141,8 +199,12 @@ def get_children_of_node(node, walls, goal_x, goal_y, DRIVE_DIST, MAX_STEER):
                 cy = node.y - math.cos(node.angle) * R
                 new_x = cx - math.sin(node.angle + turn_angle) * R
                 new_y = cy + math.cos(node.angle + turn_angle) * R
-            
-            new_angle = node.angle + turn_angle
+            """
+            new_x = node.x + drive_dist * math.cos(node.angle)
+            new_y = node.y + drive_dist * math.sin(node.angle)
+            new_angle = node.angle + steer
+
+            #new_angle = node.angle + turn_angle
             if new_angle >= math.pi * 2.0:
                 new_angle -= math.pi * 2.0
             elif new_angle < 0:
@@ -151,25 +213,31 @@ def get_children_of_node(node, walls, goal_x, goal_y, DRIVE_DIST, MAX_STEER):
             # TODO is cell within map?
 
             is_reversing = (drive_dist < 0)
-            child = Node(previous=node, posx=new_x, posy=new_y, angle=new_angle, reversing=is_reversing)
+            child = Node(node, new_x, new_y, new_angle, is_reversing)
             child.h_cost = heuristic(child, goal_x, goal_y)
             d_cost = heuristic(child.previous, child.x, child.y)
             if child.reversing:
-                d_cost *= 10.0
-            child.g_cost = child.previous.g_cost + d_cost # TODO: https://github.com/Habrador/Self-driving-vehicle/blob/a38920c76a10727585309e14464857fc4695824c/Self-driving%20vehicle%20Unity/Assets/Scripts/Pathfinding/Hybrid%20A%20star/HybridAStar.cs#L616
+                d_cost *= 20.0
+            r_cost = 0.0
+            if not child.previous.reversing and child.reversing:
+                r_cost = 10.0
+            t_cost = 1.0 * abs(steer)
+            child.g_cost = child.previous.g_cost + d_cost + r_cost + t_cost # TODO: https://github.com/Habrador/Self-driving-vehicle/blob/a38920c76a10727585309e14464857fc4695824c/Self-driving%20vehicle%20Unity/Assets/Scripts/Pathfinding/Hybrid%20A%20star/HybridAStar.cs#L616
             children.append(child)
     return children
 
-
+@njit
 def hybrid_astar_search(walls, start_x, start_y, start_angle, goal_x, goal_y, goal_angle = None):
     MAP_SIZE = 2.42
     N_CELLS = 20
     CELL_SIZE = MAP_SIZE / N_CELLS
-    ANGLE_RESOLUTION = math.radians(20.0)
+    ANGLE_RESOLUTION = math.radians(15.0)
     DRIVE_DIST = math.sqrt((CELL_SIZE ** 2) * 2) + 0.01
-    MAX_STEER = math.radians(30)
+    MAX_STEER = math.radians(40)
     POS_ACCURACY = CELL_SIZE
     ANGLE_ACCURACY = math.radians(30)
+
+    body_radius = 0.18/2 # TODO: From Robot()
 
     # For debugging
     n_pruned_nodes = 0
@@ -203,11 +271,11 @@ def hybrid_astar_search(walls, start_x, start_y, start_angle, goal_x, goal_y, go
             print('Too many iterations!')
             break
         iterations += 1
-        if len(open_nodes) == 0:
+        if open_nodes.size() == 0:
             print('No more open nodes to explore!')
             resign = True
             break
-        n_max_heap_size = max(n_max_heap_size, len(open_nodes))
+        n_max_heap_size = max(n_max_heap_size, open_nodes.size())
         next_node = open_nodes.pop_first()
         cell_pos = (int(next_node.x // CELL_SIZE), int(next_node.y // CELL_SIZE))
         cell_heading = int(next_node.angle // ANGLE_RESOLUTION)
@@ -233,6 +301,9 @@ def hybrid_astar_search(walls, start_x, start_y, start_angle, goal_x, goal_y, go
             if child_cell_pos[0] >= N_CELLS or child_cell_pos[1] >= N_CELLS:
                 n_pruned_nodes += 1
                 continue
+            if is_wall_collision(child.pos, body_radius*1.5, walls):
+                n_pruned_nodes += 1
+                continue
             child_cell_heading = int(child.angle // ANGLE_RESOLUTION)
             closed_in_child_cell = closed_cells[child_cell_pos[0]][child_cell_pos[1]]
             if child_cell_heading in closed_in_child_cell:
@@ -254,9 +325,31 @@ def hybrid_astar_search(walls, start_x, start_y, start_angle, goal_x, goal_y, go
                 continue
             open_nodes.add(child)
 
-    print(f'{found=} {resign=} {final_node=}')
-    return final_node
+    print(f'found={found} resign={resign} final_node={final_node}')
 
+    if final_node is None:
+        return None
+    else:
+        path = []
+        node = final_node
+        while node is not None:
+            path.append([node.x, node.y, node.angle])
+            node = node.previous
+        path.reverse()
+        path = np.array(path)
+        return path
+
+@njit
+def smooth_path(path):
+    x = path[:,:2]
+    y = x.copy()
+    alpha = 0.5
+    beta = 0.1
+    for _ in range(1000):
+        y[1:-1] += alpha * (x[1:-1] - y[1:-1]) + beta * (y[2:] + y[:-2] - (2 * y[1:-1]))
+    for p, yy in zip(path, y):
+        p[0] = yy[0]
+        p[1] = yy[1]
 
 def test_heap():
     import random
@@ -285,7 +378,8 @@ def test_heap():
 def test_search():
     from mapp import Map
     mapp = Map()
-    hybrid_astar_search(mapp.walls, 0.2, 0.2, 0.0, 1.0, 1.0, 0.5)
+    final_node = hybrid_astar_search(mapp.walls, 0.2, 0.2, 0.0, 1.0, 1.0, 0.5)
+    smooth_path(final_node)
 
 def main():
     #test_heap()

@@ -103,26 +103,39 @@ class Renderer:
                 with transform(self.pf.kf_pos[0], self.pf.kf_pos[1], self.pf.kf_angle):
                     self.pf3_b.draw()
 
-        node = self.path
-        while node is not None:
-            with transform(node.x, node.y, node.angle):
-                self.pf1_b.draw()
-            node = node.previous
+        if self.path is not None:
+            for p in self.path:
+                with transform(p[0], p[1], p[2]):
+                    self.pf1_b.draw()
 
         pyglet.gl.glPopMatrix()
 
 def main():
     from hybridastar import hybrid_astar_search
+    from wall_collision import is_wall_collision
     from mapp import Map
+    from robot import Robot
     import time
+    import math
     mapp = Map()
     renderer = Renderer("Test Renderer")
     renderer.set_map(mapp)
     ts = time.time()
-    final_node = hybrid_astar_search(mapp.walls, 0.5, 2.0, 0.0, 2.0, 0.7, 3.1415)
+    final_node = hybrid_astar_search(mapp.walls, 0.3, 2.0, -3.1415/4, 1.6, 1.1, 0)
     print(f'{time.time() - ts:.3f} seconds')
     renderer.set_pf(None) # lol
     renderer.set_path(final_node)
+    #robot = Robot()
+    #renderer.set_robot(robot)
+
+    # def update(dt):
+    #     robot.x = 1.0 + math.sin(time.time())
+    #     robot.y = 1.0 + math.cos(time.time())
+    #     is_collision = is_wall_collision(robot.pos, robot.body_radius, mapp.walls)
+    #     print(is_collision)
+
+    # pyglet.clock.schedule_interval(update, 1 / 60.0)
+    
     pyglet.app.run()
 
 if __name__ == '__main__':
