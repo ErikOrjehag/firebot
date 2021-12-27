@@ -8,30 +8,6 @@ from firebot_common.wall_collision import is_wall_collision
 from numba import int64, float64, boolean, deferred_type, optional, types, typed    # import the types
 from numba.experimental import jitclass
 
-spec = [
-    ('value', int64),               # a simple scalar field
-    ('array', float64[:]),          # an array field
-]
-
-@jitclass(spec)
-class Bag(object):
-    def __init__(self, value):
-        self.value = value
-        self.array = np.zeros(value, dtype=np.float64)
-
-    @property
-    def size(self):
-        return self.array.size
-
-    def increment(self, val):
-        for i in range(self.size):
-            self.array[i] += val
-        return self.array
-
-    @staticmethod
-    def add(x, y):
-        return x+y
-
 node_type = deferred_type()
 
 spec = [
@@ -48,8 +24,8 @@ spec = [
 class Node:
     def __init__(self, previous, posx, posy, angle, reversing):
         self.heap_index = -1
-        self.g_cost = 0
-        self.h_cost = 0
+        self.g_cost = 0.0
+        self.h_cost = 0.0
         self.reversing = reversing
         self.pos = np.array([posx, posy])
         self.angle = angle
@@ -58,7 +34,7 @@ class Node:
     def __repr__(self):
         return f'{self.heap_index:>03d} -> g_cost={self.g_cost:2f}, h_cost={self.h_cost:2f}, f_cost={self.f_cost:2f}'
 
-    def give_my_data_to(self, other):
+    def give_my_data_to(self, other: node_type):
         other.g_cost = self.g_cost
         other.h_cost = self.h_cost
         other.reversing = self.reversing
@@ -246,10 +222,10 @@ def hybrid_astar_search(walls, start_x, start_y, start_angle, goal_x, goal_y, go
 
     open_nodes = Heap()
 
-    # int below is the rounded heading used to enter a cell
-    closed_cells = [[set() for _y in range(N_CELLS)] for _x in range(N_CELLS)] # { heading(int), ... }
-    # the node in the cell with the lowest g-cost at a certain heading
-    lowest_cost_nodes = [[dict() for _y in range(N_CELLS)] for _x in range(N_CELLS)] # { heading(int): Node }
+    # int below is the rounded heading used to enter a cell : types.ListType(types.ListType(types.Set(int64, reflected=True)))
+    closed_cells = [[set({0}) for _y in range(N_CELLS)] for _x in range(N_CELLS)] # { heading(int), ... }
+    # the node in the cell with the lowest g-cost at a certain heading {0: Node(None, 0.0, 0.0, 0.0, False) for _ in range(0)}
+    lowest_cost_nodes = [[typed.Dict.empty(key_type=int64,value_type=Node) for _y in range(N_CELLS)] for _x in range(N_CELLS)] # { heading(int): Node }
 
     start_cell = (int(start_x // CELL_SIZE), int(start_y // CELL_SIZE))
     goal_cell = (int(goal_x // CELL_SIZE), int(goal_y // CELL_SIZE))
@@ -312,8 +288,11 @@ def hybrid_astar_search(walls, start_x, start_y, start_angle, goal_x, goal_y, go
             cost_so_far = child.g_cost
             nodes_with_lowest_costs = lowest_cost_nodes[child_cell_pos[0]][child_cell_pos[1]]
             if child_cell_heading in nodes_with_lowest_costs:
-                if cost_so_far < nodes_with_lowest_costs[child_cell_heading].g_cost:
-                    existing_node = nodes_with_lowest_costs[child_cell_heading]
+                existing_node: Node = nodes_with_lowest_costs[child_cell_heading]
+                assert existing_node is not None, "fuu"
+                #g_cost: float64 = existing_node.g_cost
+                g_cost = 0.1
+                if cost_so_far < g_cost:
                     child.give_my_data_to(existing_node)
                     open_nodes.sort_up(existing_node)
                 else:
@@ -325,7 +304,8 @@ def hybrid_astar_search(walls, start_x, start_y, start_angle, goal_x, goal_y, go
                 continue
             open_nodes.add(child)
 
-    print(f'found={found} resign={resign} final_node={final_node}')
+    #print(f'found={found} resign={resign} final_node={final_node}')
+    print("found", found, "resign", resign)
 
     if final_node is None:
         return None
