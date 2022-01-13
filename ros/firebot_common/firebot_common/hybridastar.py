@@ -2,25 +2,25 @@
 import numpy as np
 import math
 import functools
-from numba import njit
+#from numba import njit
 
 from firebot_common.wall_collision import is_wall_collision
-from numba import int64, float64, boolean, deferred_type, optional, types, typed    # import the types
-from numba.experimental import jitclass
+#from numba import int64, float64, boolean, deferred_type, optional, types, typed    # import the types
+#from numba.experimental import jitclass
 
-node_type = deferred_type()
+#node_type = deferred_type()
 
-spec = [
-    ('heap_index', int64),
-    ('g_cost', float64),
-    ('h_cost', float64),
-    ('reversing', boolean),
-    ('pos', float64[:]),
-    ('angle', float64),
-    ('previous', optional(node_type)),
-]
+# spec = [
+#     ('heap_index', int64),
+#     ('g_cost', float64),
+#     ('h_cost', float64),
+#     ('reversing', boolean),
+#     ('pos', float64[:]),
+#     ('angle', float64),
+#     ('previous', optional(node_type)),
+# ]
 
-@jitclass(spec)
+# @jitclass(spec)
 class Node:
     def __init__(self, previous, posx, posy, angle, reversing):
         self.heap_index = -1
@@ -34,7 +34,7 @@ class Node:
     def __repr__(self):
         return f'{self.heap_index:>03d} -> g_cost={self.g_cost:2f}, h_cost={self.h_cost:2f}, f_cost={self.f_cost:2f}'
 
-    def give_my_data_to(self, other: node_type):
+    def give_my_data_to(self, other): #: node_type
         other.g_cost = self.g_cost
         other.h_cost = self.h_cost
         other.reversing = self.reversing
@@ -81,17 +81,17 @@ class Node:
     def gt(self, other):
         return not self.eq(other) and self.gte(other)
 
-node_type.define(Node.class_type.instance_type)
+# node_type.define(Node.class_type.instance_type)
 
-spec = [
-    ('_items', types.ListType(Node.class_type.instance_type)),
-]
+# spec = [
+#     ('_items', types.ListType(Node.class_type.instance_type)),
+# ]
 
-@jitclass(spec)
+# @jitclass(spec)
 class Heap:
 
     def __init__(self):
-        self._items = typed.List([Node(None, 0.0, 0.0, 0.0, False) for _ in range(0)])
+        self._items = [] #typed.List([Node(None, 0.0, 0.0, 0.0, False) for _ in range(0)])
 
     def __repr__(self):
         return self._repr_recuse(0, 0)
@@ -153,11 +153,11 @@ class Heap:
         self._items[itemA.heap_index], self._items[itemB.heap_index] = itemB, itemA
         itemA.heap_index, itemB.heap_index = itemB.heap_index, itemA.heap_index
 
-@njit
+#@njit
 def heuristic(node, to_x, to_y):
     return math.sqrt((to_x - node.x)**2 + (to_y - node.y)**2)
 
-@njit
+#@njit
 def get_children_of_node(node, walls, goal_x, goal_y, DRIVE_DIST, MAX_STEER):
     wheel_base = 0.15 # TODO: From Robot()
 
@@ -202,11 +202,11 @@ def get_children_of_node(node, walls, goal_x, goal_y, DRIVE_DIST, MAX_STEER):
             children.append(child)
     return children
 
-@njit
+MAP_SIZE = 2.42
+N_CELLS = 20
+CELL_SIZE = MAP_SIZE / N_CELLS
+
 def hybrid_astar_search(walls, start_x, start_y, start_angle, goal_x, goal_y, goal_angle = None):
-    MAP_SIZE = 2.42
-    N_CELLS = 20
-    CELL_SIZE = MAP_SIZE / N_CELLS
     ANGLE_RESOLUTION = math.radians(15.0)
     DRIVE_DIST = math.sqrt((CELL_SIZE ** 2) * 2) + 0.01
     MAX_STEER = math.radians(40)
@@ -225,7 +225,7 @@ def hybrid_astar_search(walls, start_x, start_y, start_angle, goal_x, goal_y, go
     # int below is the rounded heading used to enter a cell : types.ListType(types.ListType(types.Set(int64, reflected=True)))
     closed_cells = [[set({0}) for _y in range(N_CELLS)] for _x in range(N_CELLS)] # { heading(int), ... }
     # the node in the cell with the lowest g-cost at a certain heading {0: Node(None, 0.0, 0.0, 0.0, False) for _ in range(0)}
-    lowest_cost_nodes = [[typed.Dict.empty(key_type=int64,value_type=Node) for _y in range(N_CELLS)] for _x in range(N_CELLS)] # { heading(int): Node }
+    lowest_cost_nodes = [[{} for _y in range(N_CELLS)] for _x in range(N_CELLS)]#[[typed.Dict.empty(key_type=int64,value_type=Node) for _y in range(N_CELLS)] for _x in range(N_CELLS)] # { heading(int): Node }
 
     start_cell = (int(start_x // CELL_SIZE), int(start_y // CELL_SIZE))
     goal_cell = (int(goal_x // CELL_SIZE), int(goal_y // CELL_SIZE))
@@ -319,7 +319,7 @@ def hybrid_astar_search(walls, start_x, start_y, start_angle, goal_x, goal_y, go
         path = np.array(path)
         return path
 
-@njit
+#@njit
 def smooth_path(path):
     x = path[:,:2]
     y = x.copy()

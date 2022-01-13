@@ -1,9 +1,11 @@
 
 import pyglet
+from pyglet import shapes
 from math import pi
 import numpy as np
 from math import cos, sin
 from contextlib import contextmanager
+from hybridastar import CELL_SIZE, N_CELLS
 
 @contextmanager
 def transform(x, y, angle):
@@ -31,6 +33,11 @@ class Renderer:
         self.pf1_b = None
         self.pf2_b = None
         self.pf3_b = None
+        grid_line = np.array([[0, 0, N_CELLS*CELL_SIZE, 0]])
+        self.grid_b = pyglet.graphics.Batch()
+        self.grid_b.add(len(grid_line)*2, pyglet.gl.GL_LINES, None,
+            ('v2f', grid_line.flatten()),
+            ('c3B', (30,30,30)*len(grid_line)*2))
 
     def set_map(self, mapp):
         self.map = mapp
@@ -83,6 +90,12 @@ class Renderer:
         pyglet.gl.glTranslatef(self.HEIGHT/2, -self.WIDTH/2, 0)
         pyglet.gl.glScalef(200, 200, 1)
         pyglet.gl.glTranslatef(-2.42/2, -2.42/2, 0)
+
+        for i in range(N_CELLS):
+            with transform(0, i*CELL_SIZE, 0):
+                self.grid_b.draw()
+            with transform(i*CELL_SIZE, 0, pi/2.0):
+                self.grid_b.draw()
         
         if self.map_b is not None:
             self.map_b.draw()
@@ -104,9 +117,17 @@ class Renderer:
                     self.pf3_b.draw()
 
         if self.path is not None:
-            for p in self.path:
+            batch = pyglet.graphics.Batch()
+            lines = []
+            for i, p in enumerate(self.path):
+                if i != 0:
+                    p0 = self.path[i-1]
+                    lines.append(shapes.Line(p0[0], p0[1], p[0], p[1], 0.02, color=(255, int(255-255*float(i+1)/len(self.path)), 0), batch=batch))
+                    #lines[-1].opacity = 100.0-80.0*float(i)/float(len(self.path))
+                    lines[-1].opacity = 100
                 with transform(p[0], p[1], p[2]):
                     self.pf1_b.draw()
+            batch.draw()
 
         pyglet.gl.glPopMatrix()
 
@@ -121,10 +142,13 @@ def main():
     renderer = Renderer("Test Renderer")
     renderer.set_map(mapp)
     ts = time.time()
-    final_node = hybrid_astar_search(mapp.walls, 0.3, 2.0, -3.1415/4, 1.6, 1.1, 0)
+    final_node = hybrid_astar_search(mapp.walls, 0.8, 2.0, -3.1415/4, 1.6, 1.1, 3.1415)
     print(f'{time.time() - ts:.3f} seconds')
     renderer.set_pf(None) # lol
     renderer.set_path(final_node)
+    
+    
+    
     #robot = Robot()
     #renderer.set_robot(robot)
 

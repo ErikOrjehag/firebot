@@ -2,9 +2,9 @@
 import numpy as np
 from math import cos, sin, pi, sqrt, exp, fabs
 from random import random
-from numba import njit
+#from numba import njit
 
-@njit
+#@njit
 def is_wall_collision(pos, radius, walls):
     
     r2 = radius**2
