@@ -1,5 +1,10 @@
+
+# sudo apt-get install libatlas-base-dev libportaudio0 libportaudio2 libportaudiocpp0 portaudio19-dev
+# sudo apt-get install libportaudio0 libportaudio2 libportaudiocpp0 portaudio19-dev
+
 smbus
 RPi.GPIO
 pyglet
-numpy
-numba
+numpy>=1.18
+pyaudio
+scipy
