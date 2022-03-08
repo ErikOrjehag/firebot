@@ -197,7 +197,7 @@ def get_children_of_node(node, walls, goal_x, goal_y, DRIVE_DIST, MAX_STEER):
             r_cost = 0.0
             if not child.previous.reversing and child.reversing:
                 r_cost = 10.0
-            t_cost = 1.0 * abs(steer)
+            t_cost = 0.5 * abs(steer)
             child.g_cost = child.previous.g_cost + d_cost + r_cost + t_cost # TODO: https://github.com/Habrador/Self-driving-vehicle/blob/a38920c76a10727585309e14464857fc4695824c/Self-driving%20vehicle%20Unity/Assets/Scripts/Pathfinding/Hybrid%20A%20star/HybridAStar.cs#L616
             children.append(child)
     return children

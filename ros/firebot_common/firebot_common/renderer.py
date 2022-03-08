@@ -142,7 +142,8 @@ def main():
     renderer = Renderer("Test Renderer")
     renderer.set_map(mapp)
     ts = time.time()
-    final_node = hybrid_astar_search(mapp.walls, 0.8, 2.0, -3.1415/4, 1.6, 1.1, 3.1415)
+    #final_node = hybrid_astar_search(mapp.walls, 0.8, 2.0, -3.1415/4, 1.6, 1.1, 3.1415)
+    final_node = hybrid_astar_search(mapp.walls, 0.1, 0.9, -3.1415/100, 0.1, 0.85, pi)
     print(f'{time.time() - ts:.3f} seconds')
     renderer.set_pf(None) # lol
     renderer.set_path(final_node)
