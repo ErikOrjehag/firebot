@@ -3,6 +3,7 @@
 import RPi.GPIO as GPIO
 import time
 import microphone
+from smbus import SMBus
 
 def servo():
   servoPin = 13
@@ -78,8 +79,26 @@ def ledsAndBuzzer():
   except KeyboardInterrupt:
     GPIO.cleanup()
 
-if __name__ == "__main__":
-  microphone.block_until_start_signal()
-  ledsAndBuzzer()
-  #servo()
+def i2c():
+  addr = 0x8 # bus address
+  bus = SMBus(1) # indicates /dev/ic2-1
+  
+  numb = 1
+  
+  print ("Enter 1 for ON or 0 for OFF")
+  while numb == 1:
+  
+    ledstate = input(">>>>   ")
+  
+    if ledstate == "1":
+      bus.write_byte(addr, 0x1) # switch it on
+    elif ledstate == "0":
+      bus.write_byte(addr, 0x0) # switch it on
+    else:
+      numb = 0
 
+if __name__ == "__main__":
+  # microphone.block_until_start_signal()
+  # ledsAndBuzzer()
+  # servo()
+  i2c()
