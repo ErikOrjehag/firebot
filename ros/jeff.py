@@ -4,6 +4,7 @@ import RPi.GPIO as GPIO
 import time
 import microphone
 from smbus import SMBus
+from tpa81 import TPA81
 
 def servo():
   servoPin = 13
@@ -97,8 +98,22 @@ def i2c():
     else:
       numb = 0
 
+def tpa81():
+  tpa = TPA81(bus_num=1)
+  print('Version: ', tpa.softwareVersion())
+  print('Ambient Temperature: ', tpa.ambientTemperature())
+  for i in range(len(tpa.TPA81_PIXEL)):
+      print(f'Pixel {i}: {tpa.pixelTemp(i)}')
+
+def vl53l1x():
+  # https://github.com/pimoroni/vl53l1x-python
+  pass
+
+
 if __name__ == "__main__":
   # microphone.block_until_start_signal()
   # ledsAndBuzzer()
   # servo()
-  i2c()
+  # i2c()
+  # tpa81()
+  vl53l1x()

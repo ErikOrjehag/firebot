@@ -8,3 +8,4 @@ pyglet
 numpy>=1.18
 pyaudio
 scipy
+vl53l1x
