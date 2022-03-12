@@ -1,5 +1,13 @@
 
-# Conncet
+# Connect
 
 pi@192.168.43.77
 raspberry
+
+# Install ROS2 Galagic
+
+https://singleboardblog.com/install-ros2-on-raspberry-pi/
+
+sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key  -o /usr/share/keyrings/ros-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu focal main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
+sudo apt update
