@@ -5,9 +5,12 @@ import time
 import microphone
 from smbus import SMBus
 from tpa81 import TPA81
+<<<<<<< HEAD
 import VL53L1X
 import time
 from multiprocessing import Process, Queue
+=======
+>>>>>>> e3e154b799be37c1e2a082a765e6473c71ee81f7
 
 def servo():
   servoPin = 13
