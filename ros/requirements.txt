@@ -8,8 +8,4 @@ pyglet
 numpy>=1.18
 pyaudio
 scipy
-<<<<<<< HEAD
 VL53L1X
-=======
-vl53l1x
->>>>>>> e3e154b799be37c1e2a082a765e6473c71ee81f7
