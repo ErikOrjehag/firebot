@@ -7,7 +7,6 @@ from smbus import SMBus
 from tpa81 import TPA81
 import VL53L1X
 import time
-from multiprocessing import Process, Queue
 
 def servo():
   servoPin = 13

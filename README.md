@@ -1,10 +1,12 @@
 
 # Firebot!
 
-## Connect
+# Connect
 
 ubuntu@192.168.43.52
 raspberry
+
+# Setup Ubuntu Focal 20.04 on Rasperry Pi 3B+
 
 ## Fix display issue for China screen
 
@@ -66,6 +68,18 @@ This is needed to pip install pyaudio:
 
 https://singleboardblog.com/install-ros2-on-raspberry-pi/
 
-sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key  -o /usr/share/keyrings/ros-archive-keyring.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu focal main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
+```
 sudo apt update
+sudo apt install curl gnupg lsb-release
+
+sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key  -o /usr/share/keyrings/ros-archive-keyring.gpg
+
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(source /etc/os-release && echo $UBUNTU_CODENAME) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
+
+sudo apt install ros-galactic-ros-base -y
+
+echo "source /opt/ros/galactic/setup.bash" >>~/.bashrc
+exec "$SHELL"
+
+pip3 install colcon-common-extensions
+```
