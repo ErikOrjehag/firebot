@@ -1,8 +1,4 @@
 
-# TODO:
-
-i2c speed
-
 # Firebot!
 
 ## Connect
@@ -31,24 +27,40 @@ https://linuxconfig.org/ubuntu-20-04-connect-to-wifi-from-command-line
 
 ## Install raspi-config
 
+```
 sudo echo "deb http://archive.raspberrypi.org/debian/ buster main" >> /etc/apt/sources.list
 sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 7FA3303E
 sudo apt-get update
 sudo apt-get install raspi-config
 sudo mount /dev/mmcblk0p1 /boot
+```
 
-Enable SSH and I2C
+Then `raspi-config` and enable SSH and I2C
 
-## Enable GPIO for non root user
+## Enable GPIO and I2C for non root user
 
+```
 sudo groupadd gpi
+sudo groupadd i2c
 sudo adduser ubuntu gpio
-sudo chown root.gpio /dev/gpiomem
-sudo chmod g+rw /dev/gpiomem
+sudo adduser ubuntu i2c
+sudo nano /etc/udev/rules.d/99-my.rules
+
+RUN+="/bin/sh -c 'chown root.gpio /dev/gpiomem && chmod g+rw /dev/gpiomem'"
+SUBSYSTEM=="i2c-dev", GROUP="i2c", MODE="0660"
+
+sudo reboot
+```
 
 ## Install pyaudio dependencies
 
-sudo apt-get install libportaudio2 libportaudiocpp0 portaudio19-dev
+This is needed to pip install pyaudio:
+
+`sudo apt-get install libportaudio2 libportaudiocpp0 portaudio19-dev`
+
+## Increase i2c speed to 400kHz
+
+`sudo nano /boot/firmware/config.txt` and find `dtparam=i2c_arm=on` modify to say `dtparam=i2c_arm=on,i2c_arm_baudrate=400000` instead. Reboot then `./i2cspeed.sh` to verify the change.
 
 ## Install ROS2 Galagic
 

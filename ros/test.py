@@ -181,7 +181,7 @@ def VL53L1X_test():
           ts = time.time()
         i = i + 1
         dists = [tof.get_distance() for tof in tofs]
-        # print(dists)
+        print(dists)
         # hz = 1.0 / (time.time() - ts)
         # print(f"{hz:.1f}Hz " + ", ".join(f"{d:d}" for d in dists))
   except KeyboardInterrupt:
