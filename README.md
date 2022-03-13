@@ -1,4 +1,8 @@
 
+# TODO:
+
+i2c speed
+
 # Firebot!
 
 ## Connect
