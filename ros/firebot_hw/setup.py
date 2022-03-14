@@ -22,6 +22,7 @@ setup(
         'console_scripts': [
             'vl53l1x_node = firebot_hw.vl53l1x_node:main',
             'tpa81_node = firebot_hw.tpa81_node:main',
+            'servo_node = firebot_hw.servo_node:main',
         ],
     },
 )
