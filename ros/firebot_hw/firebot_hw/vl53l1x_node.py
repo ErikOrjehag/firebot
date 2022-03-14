@@ -5,7 +5,7 @@ import rclpy.node
 import RPi.GPIO as GPIO
 import VL53L1X
 
-def poll_and_publish_sensors(node, executor):
+def poll_and_publish_hits(node, executor):
     pub = node.create_publisher(std_msgs.msg.Float64MultiArray, "/hits", 10)
     xshut = [17, 27, 22, 10, 9, 11, 5, 6]
     GPIO.setmode(GPIO.BCM)
@@ -25,6 +25,7 @@ def poll_and_publish_sensors(node, executor):
         tof = VL53L1X.VL53L1X(i2c_bus=1, i2c_address=0x29 + offset)
         tof.open()
         tof.set_timing(33000, 38)
+        tof.set_user_roi(VL53L1X.VL53L1xUserRoi(7, 8, 7, 8))
         tof.start_ranging(0)
         tofs.append(tof)
     msg = std_msgs.msg.Float64MultiArray()
@@ -44,7 +45,7 @@ def main():
     node = rclpy.create_node("vl53l1x_node")
     executor = rclpy.executors.SingleThreadedExecutor()
     executor.add_node(node)
-    poll_and_publish_sensors(node, executor)
+    poll_and_publish_hits(node, executor)
     executor.shutdown()
     node.destroy_node()
     rclpy.shutdown()

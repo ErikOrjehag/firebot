@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'vl53l1x_node = firebot_hw.vl53l1x_node:main'
+            'vl53l1x_node = firebot_hw.vl53l1x_node:main',
+            'tpa81_node = firebot_hw.tpa81_node:main',
         ],
     },
 )
