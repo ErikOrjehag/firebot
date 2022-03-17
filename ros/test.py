@@ -3,7 +3,7 @@
 import RPi.GPIO as GPIO
 import time
 import microphone
-from smbus import SMBus
+from smbus2 import SMBus
 from tpa81 import TPA81
 import VL53L1X
 import time
@@ -93,10 +93,34 @@ def i2c():
   
     ledstate = input(">>>>   ")
   
-    if ledstate == "1":
-      bus.write_byte(addr, 0x1) # switch it on
+    s0 = 1000
+    s1 = -1000
+
+    s0h = (s0 >> 8) & 0xFF
+    s0l = s0 & 0xFF
+    s1h = (s1 >> 8) & 0xFF
+    s1l = s1 & 0xFF
+
+    print(s0h, s0l)
+
+    if ledstate == "3":
+      bus.write_byte(addr, 0x10101010)
+      bus.write_byte(addr, s0h)
+      bus.write_byte(addr, s0l)
+      bus.write_byte(addr, s1h)
+      bus.write_byte(addr, s1l)
+      bus.write_byte(addr, s0h ^ s0l ^ s1h ^ s1l)
+      bus.write_byte(addr, 0x01010101)
+    elif ledstate == "5":
+      bus.write_byte(addr, 0x01010101)
     elif ledstate == "0":
-      bus.write_byte(addr, 0x0) # switch it on
+      bus.write_byte(addr, 0x10101010)
+      bus.write_byte(addr, 0x0)
+      bus.write_byte(addr, 0x0)
+      bus.write_byte(addr, 0x0)
+      bus.write_byte(addr, 0x0)
+      bus.write_byte(addr, 0x0)
+      bus.write_byte(addr, 0x01010101)
     else:
       numb = 0
 
@@ -198,7 +222,7 @@ if __name__ == "__main__":
   # microphone.block_until_start_signal()
   # ledsAndBuzzer()
   # servo()
-  # i2c()
-  tpa81_test()
-  VL53L1X_test()
+  i2c()
+  # tpa81_test()
+  # VL53L1X_test()
   # tpa81_and_i2c()
