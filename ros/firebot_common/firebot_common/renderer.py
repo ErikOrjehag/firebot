@@ -5,7 +5,7 @@ from math import pi
 import numpy as np
 from math import cos, sin
 from contextlib import contextmanager
-from hybridastar import CELL_SIZE, N_CELLS
+from firebot_common.hybridastar import CELL_SIZE, N_CELLS
 
 @contextmanager
 def transform(x, y, angle):

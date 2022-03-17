@@ -6,6 +6,7 @@ xhost + > /dev/null
 
 docker run\
   --name firebot\
+  --network host\
   -e TOKEN\
   -v /tmp/.X11-unix:/tmp/.X11-unix\
   -e DISPLAY=$DISPLAY\
