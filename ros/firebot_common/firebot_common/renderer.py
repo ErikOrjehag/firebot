@@ -141,25 +141,23 @@ def main():
     mapp = Map()
     renderer = Renderer("Test Renderer")
     renderer.set_map(mapp)
-    ts = time.time()
-    #final_node = hybrid_astar_search(mapp.walls, 0.8, 2.0, -3.1415/4, 1.6, 1.1, 3.1415)
-    final_node = hybrid_astar_search(mapp.walls, 0.1, 0.9, -3.1415/100, 0.1, 0.85, pi)
-    print(f'{time.time() - ts:.3f} seconds')
-    renderer.set_pf(None) # lol
-    renderer.set_path(final_node)
+    # ts = time.time()
+    # #final_node = hybrid_astar_search(mapp.walls, 0.8, 2.0, -3.1415/4, 1.6, 1.1, 3.1415)
+    # final_node = hybrid_astar_search(mapp.walls, 0.1, 0.9, -3.1415/100, 0.1, 0.85, pi)
+    # print(f'{time.time() - ts:.3f} seconds')
+    # renderer.set_pf(None) # lol
+    # renderer.set_path(final_node)
     
-    
-    
-    #robot = Robot()
-    #renderer.set_robot(robot)
+    robot = Robot()
+    renderer.set_robot(robot)
 
-    # def update(dt):
-    #     robot.x = 1.0 + math.sin(time.time())
-    #     robot.y = 1.0 + math.cos(time.time())
-    #     is_collision = is_wall_collision(robot.pos, robot.body_radius, mapp.walls)
-    #     print(is_collision)
+    def update(dt):
+        robot.x = 1.0 + math.sin(time.time())
+        robot.y = 1.0 + math.cos(time.time())
+        is_collision = is_wall_collision(robot.pos, robot.body_radius, mapp.walls)
+        print(is_collision)
 
-    # pyglet.clock.schedule_interval(update, 1 / 60.0)
+    pyglet.clock.schedule_interval(update, 1 / 60.0)
     
     pyglet.app.run()
 

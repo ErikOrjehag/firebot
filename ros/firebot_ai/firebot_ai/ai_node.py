@@ -44,7 +44,7 @@ class AiNode(Node):
             self.map.walls
         )
         t = time() - t1
-        print(f't: {t:.3f}')
+        print(f'Hz: {1.0/t:.0f}')
         if self.pf.best_pos is not None:
             pose_msg = Pose()
             pose_msg.position.x = self.pf.best_pos[0]

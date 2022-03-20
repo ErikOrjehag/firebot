@@ -42,12 +42,12 @@ class Simulation:
                          self.robot.sensor_offsets, 
                          self.map.walls)
 
-        if self.search_process is None or not self.search_process.is_alive():
-            if not self.queue.empty():
-                path = self.queue.get(False)
-                self.renderer.set_path(path)
-            self.search_process = Process(target=thread_target, name='search_process', args=(self.queue, self.map.walls, self.robot.x, self.robot.y, self.robot.angle, 1.6, 1.1, 0))
-            self.search_process.start()
+        # if self.search_process is None or not self.search_process.is_alive():
+        #     if not self.queue.empty():
+        #         path = self.queue.get(False)
+        #         self.renderer.set_path(path)
+        #     self.search_process = Process(target=thread_target, name='search_process', args=(self.queue, self.map.walls, self.robot.x, self.robot.y, self.robot.angle, 1.6, 1.1, 0))
+        #     self.search_process.start()
 
 
 def main(args=None):

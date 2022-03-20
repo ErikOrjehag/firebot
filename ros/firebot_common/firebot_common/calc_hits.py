@@ -18,33 +18,25 @@ def calc_hits(pos, angle, sensor_dirs, sensor_offsets, walls):
 
     hits = np.zeros(len(rays))
 
-    for i, ray in enumerate(rays):
+    w = pt0[:,:,0]
+    u = pt1[:,:,0] - pt0[:,:,0]
 
-        # http://geomalgorithms.com/a05-_intersect-1.html
-
-        w = pt0[:,:,0]
-        u = pt1[:,:,0] - pt0[:,:,0]
-        v = ray[...,0]
-
-        # Do not devide by zero
-        denom = (v[0]*u[:,1] - v[1]*u[:,0])
-        denom = np.where(denom < 0, -1., 1.) * np.maximum(np.abs(denom), 1e-9)
-        s = (v[1]*w[:,0] - v[0]*w[:,1]) / denom
-
-        p = (w + s[...,None] * u)
-
-        # inside line u
-        mask1 = np.logical_and(s >= 0, s <= 1)
-        p = p[mask1]
-
-        # in front of raw v
-        mask2 = p.dot(v) >= sensor_offsets[i]
-        p = p[mask2]
-
-        if len(p):
-            h = np.linalg.norm(p, axis=1)
-            hits[i] = h.min() - sensor_offsets[i]
-        else:
-            hits[i] = 1e9
+    denom = (rays[:,0]*u[:,1] - rays[:,1]*u[:,0])
+    # Do not devide by zero
+    denom = np.where(denom < 0, -1., 1.) * np.maximum(np.abs(denom), 1e-9)
+    s = (rays[:,1]*w[:,0] - rays[:,0]*w[:,1]) / denom
     
+    p = (w + s[...,None] * u)
+
+    # inside line u
+    mask1 = np.logical_and(s >= 0, s <= 1)
+
+    # in front of ray
+    mask2 = (p * np.repeat(rays.transpose((0,2,1)), p.shape[1], 1)).sum(2) >= sensor_offsets[...,None]
+
+    mask = np.logical_and(mask1, mask2)
+
+    h = np.linalg.norm(p, axis=2)
+    hits = (np.bitwise_not(mask) * 1e9 + h).min(1) - sensor_offsets
+
     return hits
