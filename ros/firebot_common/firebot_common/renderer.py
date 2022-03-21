@@ -6,6 +6,7 @@ import numpy as np
 from math import cos, sin
 from contextlib import contextmanager
 from firebot_common.hybridastar import CELL_SIZE, N_CELLS
+import firebot_common.wall_collision
 
 @contextmanager
 def transform(x, y, angle):
@@ -25,6 +26,7 @@ class Renderer:
         self.window = pyglet.window.Window(self.WIDTH, self.HEIGHT, title)
         self.window.on_draw = self.on_draw
         self.map = None
+        self.distmap_pic = None
         self.map_b = None
         self.robot = None
         self.path = None
@@ -80,6 +82,9 @@ class Renderer:
             ('v2f', 0.2*shape.flatten()),
             ('c3B', (0,0,255)*len(shape)))
 
+    def set_distmap(self, distmap):
+        self.distmap_pic = firebot_common.wall_collision.to_image(distmap)
+
     def set_path(self, node):
         self.path = node
 
@@ -97,6 +102,14 @@ class Renderer:
             with transform(i*CELL_SIZE, 0, pi/2.0):
                 self.grid_b.draw()
         
+        if self.distmap_pic is not None:
+            pyglet.gl.glPushMatrix()
+            pyglet.gl.glScalef(firebot_common.wall_collision.CELL_SIZE, firebot_common.wall_collision.CELL_SIZE, 1)
+            self.distmap_pic.anchor_x = 0 #self.distmap_pic.width // 2
+            self.distmap_pic.anchor_y = 0 #self.distmap_pic.height // 2
+            self.distmap_pic.blit(0, 0, 0)
+            pyglet.gl.glPopMatrix()
+
         if self.map_b is not None:
             self.map_b.draw()
         
@@ -133,29 +146,30 @@ class Renderer:
 
 def main():
     from hybridastar import hybrid_astar_search
-    from wall_collision import is_wall_collision
+    from wall_collision import is_wall_collision, generate_distance_map
     from mapp import Map
     from robot import Robot
     import time
     import math
+    
     mapp = Map()
+    
     renderer = Renderer("Test Renderer")
     renderer.set_map(mapp)
-    # ts = time.time()
-    # #final_node = hybrid_astar_search(mapp.walls, 0.8, 2.0, -3.1415/4, 1.6, 1.1, 3.1415)
-    # final_node = hybrid_astar_search(mapp.walls, 0.1, 0.9, -3.1415/100, 0.1, 0.85, pi)
-    # print(f'{time.time() - ts:.3f} seconds')
-    # renderer.set_pf(None) # lol
-    # renderer.set_path(final_node)
     
     robot = Robot()
     renderer.set_robot(robot)
 
+    distmap = generate_distance_map(mapp)
+    
+    renderer.set_distmap(distmap)
+
     def update(dt):
-        robot.x = 1.0 + math.sin(time.time())
-        robot.y = 1.0 + math.cos(time.time())
+        robot.x = 1.5 + 0.5*math.sin(0.2*time.time())
+        robot.y = 1.5 + 0.5*math.cos(0.2*time.time())
         is_collision = is_wall_collision(robot.pos, robot.body_radius, mapp.walls)
-        print(is_collision)
+        is_distmap_collision = distmap[int(robot.pos[1] / wall_collision.CELL_SIZE), int(robot.pos[0] / wall_collision.CELL_SIZE)] < robot.body_radius
+        print(is_collision, is_distmap_collision)
 
     pyglet.clock.schedule_interval(update, 1 / 60.0)
     

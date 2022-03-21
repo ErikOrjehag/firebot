@@ -9,12 +9,16 @@ from math import sin, cos
 from pyglet.window import mouse, key
 import numpy as np
 from multiprocessing import Process, Queue
+import firebot_common.wall_collision
 
 def thread_target(queue, *args):
+    ts = time()
     final_node = hybrid_astar_search(*args)
     if final_node is not None:
         smooth_path(final_node)
     queue.put(final_node)
+    t = time() - ts
+    print(f'Hz: {1.0/t:.0f}, t: {t:.2}s')
 
 class Simulation:
 
@@ -22,9 +26,13 @@ class Simulation:
         self.linear = 0
         self.angular = 0
         self.map = Map()
+        self.distmap = firebot_common.wall_collision.generate_distance_map(self.map)
         self.robot = Robot()
+        self.robot.pos = np.array((0.413635909861095, 0.6977477692875264))
+        self.robot.angle = 0.5
         self.renderer = Renderer("Simulation")
         self.renderer.set_map(self.map)
+        self.renderer.set_distmap(self.distmap)
         self.renderer.set_robot(self.robot)
         self.renderer.set_pf(None) # lol
         self.queue = Queue()
@@ -42,12 +50,12 @@ class Simulation:
                          self.robot.sensor_offsets, 
                          self.map.walls)
 
-        # if self.search_process is None or not self.search_process.is_alive():
-        #     if not self.queue.empty():
-        #         path = self.queue.get(False)
-        #         self.renderer.set_path(path)
-        #     self.search_process = Process(target=thread_target, name='search_process', args=(self.queue, self.map.walls, self.robot.x, self.robot.y, self.robot.angle, 1.6, 1.1, 0))
-        #     self.search_process.start()
+        if self.search_process is None or not self.search_process.is_alive():
+            if not self.queue.empty():
+                path = self.queue.get(False)
+                self.renderer.set_path(path)
+            self.search_process = Process(target=thread_target, name='search_process', args=(self.queue, self.map.walls, self.distmap, self.robot.x, self.robot.y, self.robot.angle, 1.6, 1.1, 0))
+            self.search_process.start()
 
 
 def main(args=None):

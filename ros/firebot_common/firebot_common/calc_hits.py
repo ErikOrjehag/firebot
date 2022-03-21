@@ -4,7 +4,14 @@ from math import cos, sin, pi, sqrt, exp, fabs
 from random import random
 
 def calc_hits(pos, angle, sensor_dirs, sensor_offsets, walls):
-    
+    """
+	pos: robot position
+	angle: robot angle
+	sensor_dirs: normalized direction vectors of N sensors
+	sensor_offsets: offsets from robot center for the N sensors
+	walls: vectors (point_start, point_end) for M walls.
+	"""
+
     pt0 = walls[:,:2,None] - pos[...,None]
     pt1 = walls[:,2:,None] - pos[...,None]
 
