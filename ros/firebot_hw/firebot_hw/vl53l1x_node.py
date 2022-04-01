@@ -7,12 +7,13 @@ import VL53L1X
 
 def poll_and_publish_hits(node, executor):
     pub = node.create_publisher(std_msgs.msg.Float64MultiArray, "/hits", 10)
+    all = [17, 27, 22, 10, 9, 11, 5, 6]
     xshut = [17, 27, 22, 10, 9, 11, 5, 6]
     GPIO.setmode(GPIO.BCM)
     GPIO.setwarnings(False)
-    for pin in xshut:
+    for pin in all:
         GPIO.setup(pin, GPIO.OUT)
-    for pin in xshut:
+    for pin in all:
         GPIO.output(pin, GPIO.LOW)
     for offset, pin in enumerate(xshut, 1):
         GPIO.output(pin, GPIO.HIGH)
@@ -32,6 +33,7 @@ def poll_and_publish_hits(node, executor):
     try:
         while rclpy.ok():
             msg.data = [float(tof.get_distance()) / 1000.0 for tof in tofs]
+            msg.data.reverse()
             pub.publish(msg)
             executor.spin_once(timeout_sec=0.001)
     except KeyboardInterrupt:
