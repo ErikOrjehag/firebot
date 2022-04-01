@@ -1,9 +1,10 @@
 
 import numpy as np
-import math
+from math import sqrt, cos, sin, pi, radians
 import functools
 
 import firebot_common.wall_collision
+from firebot_common.constants import SEARCH_CELL_SIZE, pos_to_search_cell, pos_to_dist_cell, is_pos_outside
 
 class Node:
     def __init__(self, previous, posx, posy, angle, reversing):
@@ -131,55 +132,41 @@ class Heap:
         self._items[itemA.heap_index], self._items[itemB.heap_index] = itemB, itemA
         itemA.heap_index, itemB.heap_index = itemB.heap_index, itemA.heap_index
 
-def heuristic(distmap, node, to_x, to_y):
-    child_cell_pos = (int(node.x // firebot_common.wall_collision.CELL_SIZE), int(node.y // firebot_common.wall_collision.CELL_SIZE))
-    if child_cell_pos[0] >= 0 and child_cell_pos[0] < 80 and child_cell_pos[1] >= 0 and child_cell_pos[1] < 80: 
-        dist = distmap[int(node.y / firebot_common.wall_collision.CELL_SIZE), int(node.x / firebot_common.wall_collision.CELL_SIZE)]*10.0
-    else:
-        dist = 0.0
-    return math.sqrt((to_x - node.x)**2 + (to_y - node.y)**2) + 1.0 / max(dist, 0.01)
+def heuristic(node, dijkstras):
+    return dijkstras[pos_to_search_cell(node.x, node.y)]
 
-def get_children_of_node(distmap, node, walls, goal_x, goal_y, DRIVE_DIST, MAX_STEER):
+def get_children_of_node(distmap, node, walls, dijkstras, DRIVE_DIST, MAX_STEER):
     wheel_base = 0.15 # TODO: From Robot()
+
+    max_dist = distmap.max()
 
     children = []
     for drive_dist in [DRIVE_DIST, -DRIVE_DIST]:
         for steer in [-MAX_STEER, -MAX_STEER/2.0, 0.0, MAX_STEER/2.0, MAX_STEER]:
-            """
-            turn_angle = (drive_dist / wheel_base) * math.tan(steer)
-            if abs(turn_angle) < 1e-4:
-                new_x = node.x + drive_dist * math.cos(node.angle) # TODO: sin/cos?
-                new_y = node.y + drive_dist * math.sin(node.angle)
-            else:
-                R = drive_dist / turn_angle
-                cx = node.x + math.sin(node.angle) * R
-                cy = node.y - math.cos(node.angle) * R
-                new_x = cx - math.sin(node.angle + turn_angle) * R
-                new_y = cy + math.cos(node.angle + turn_angle) * R
-            """
-            new_x = node.x + drive_dist * math.cos(node.angle)
-            new_y = node.y + drive_dist * math.sin(node.angle)
-            new_angle = node.angle + steer
-
-            #new_angle = node.angle + turn_angle
-            if new_angle >= math.pi * 2.0:
-                new_angle -= math.pi * 2.0
-            elif new_angle < 0:
-                new_angle += math.pi * 2.0
+            new_x = node.x + drive_dist * cos(node.angle)
+            new_y = node.y + drive_dist * sin(node.angle)
             
-            # TODO is cell within map?
+            if is_pos_outside(new_x, new_y):
+                continue
+
+            new_angle = node.angle + steer
+            if new_angle >= pi * 2.0:
+                new_angle -= pi * 2.0
+            elif new_angle < 0:
+                new_angle += pi * 2.0
 
             is_reversing = (drive_dist < 0)
             child = Node(node, new_x, new_y, new_angle, is_reversing)
-            child.h_cost = heuristic(distmap, child, goal_x, goal_y)
-            d_cost = heuristic(distmap, child.previous, child.x, child.y)
+            child.h_cost = heuristic(child, dijkstras)
+            dist = distmap[pos_to_dist_cell(child.x, child.y)]
+            d_cost = SEARCH_CELL_SIZE * sqrt((child.previous.x - child.x)**2 + (child.previous.y - child.y)**2) # heuristic(child.previous, child.x, child.y) # + 10.0 * (1.0 - max(dist, 0.0001) / max_dist)
             if child.reversing:
                 d_cost *= 20.0
             r_cost = 0.0
             if not child.previous.reversing and child.reversing:
                 r_cost = 10.0
             t_cost = 0.5 * abs(steer)
-            child.g_cost = child.previous.g_cost + d_cost + r_cost + t_cost # TODO: https://github.com/Habrador/Self-driving-vehicle/blob/a38920c76a10727585309e14464857fc4695824c/Self-driving%20vehicle%20Unity/Assets/Scripts/Pathfinding/Hybrid%20A%20star/HybridAStar.cs#L616
+            child.g_cost = child.previous.g_cost + d_cost  # + r_cost + t_cost # TODO: https://github.com/Habrador/Self-driving-vehicle/blob/a38920c76a10727585309e14464857fc4695824c/Self-driving%20vehicle%20Unity/Assets/Scripts/Pathfinding/Hybrid%20A%20star/HybridAStar.cs#L616
             children.append(child)
     return children
 
@@ -187,12 +174,12 @@ MAP_SIZE = 2.42
 N_CELLS = 20
 CELL_SIZE = MAP_SIZE / N_CELLS
 
-def hybrid_astar_search(walls, distmap, start_x, start_y, start_angle, goal_x, goal_y, goal_angle = None):
-    ANGLE_RESOLUTION = math.radians(15.0)
-    DRIVE_DIST = math.sqrt((CELL_SIZE ** 2) * 2) + 0.01
-    MAX_STEER = math.radians(40)
+def hybrid_astar_search(walls, distmap, dijkstras, start_x, start_y, start_angle, goal_x, goal_y, goal_angle = None):
+    ANGLE_RESOLUTION = radians(15.0)
+    DRIVE_DIST = sqrt((CELL_SIZE ** 2) * 2) + 0.01
+    MAX_STEER = radians(40)
     POS_ACCURACY = CELL_SIZE
-    ANGLE_ACCURACY = math.radians(30)
+    ANGLE_ACCURACY = radians(30)
 
     body_radius = 0.18/2 # TODO: From Robot()
 
@@ -213,7 +200,7 @@ def hybrid_astar_search(walls, distmap, start_x, start_y, start_angle, goal_x, g
 
     node = Node(previous=None, posx=start_x, posy=start_y, angle=start_angle, reversing=False)
     node.g_cost = 0.0
-    node.h_cost = heuristic(distmap, node, goal_x, goal_y)
+    node.h_cost = heuristic(node, dijkstras)
 
     open_nodes.add(node)
 
@@ -249,7 +236,7 @@ def hybrid_astar_search(walls, distmap, start_x, start_y, start_angle, goal_x, g
             found = True
             final_node = next_node
             break
-        children = get_children_of_node(distmap, next_node, walls, goal_x, goal_y, DRIVE_DIST, MAX_STEER)
+        children = get_children_of_node(distmap, next_node, walls, dijkstras, DRIVE_DIST, MAX_STEER)
         for child in children:
             child_cell_pos = (int(child.x // CELL_SIZE), int(child.y // CELL_SIZE))
             if child_cell_pos[0] < 0 or child_cell_pos[1] < 0:

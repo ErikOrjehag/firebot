@@ -1,23 +1,24 @@
 
 import numpy as np
 from math import pi, cos, sin
+from firebot_common.constants import MAP_SIZE, BODY_RADIUS
 
 class Robot():
 
     def __init__(self):
-        self.wheel_base = 0.15
-        self.wheel_radius = 0.4
-        self.body_radius = 0.18/2
+        self.wheel_base = 0.17
+        self.wheel_radius = 0.1
+        self.body_radius = 0.1013
         self.N_sensors = 8
 
-        self.sensor_offsets = np.array( [self.body_radius]*self.N_sensors )
+        self.sensor_offsets = np.array( [0.0091]+[0.1013]*(self.N_sensors-1) )
         #self.sensor_dirs = np.vstack([[cos(phi), sin(phi)] for phi in np.linspace(0, 2*pi, self.N_sensors, endpoint=False)+pi/4])
         self.sensor_dirs = np.vstack([[cos(phi), sin(phi)] for phi in np.linspace(0, 2*pi, self.N_sensors, endpoint=False)])
 
         self.hits = np.ones(self.N_sensors) * 0.1
 
-        posx = np.random.uniform(0.1, 2.3)
-        posy = np.random.uniform(0.1, 2.3)
+        posx = np.random.uniform(BODY_RADIUS, MAP_SIZE-BODY_RADIUS)
+        posy = np.random.uniform(BODY_RADIUS, MAP_SIZE-BODY_RADIUS)
         self.pos = pos = np.hstack((posx, posy))
         self.angle = np.random.uniform(0.0, 2.0*pi)
     

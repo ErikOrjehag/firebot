@@ -3,9 +3,9 @@ import pyglet
 from pyglet import shapes
 from math import pi
 import numpy as np
-from math import cos, sin
+from math import cos, sin, atan2
 from contextlib import contextmanager
-from firebot_common.hybridastar import CELL_SIZE, N_CELLS
+from firebot_common.constants import DIST_CELL_SIZE, SEARCH_CELL_SIZE, N_SEARCH_CELLS, MAP_SIZE
 import firebot_common.wall_collision
 
 @contextmanager
@@ -21,21 +21,23 @@ def transform(x, y, angle):
 class Renderer:
 
     def __init__(self, title="Title"):
-        self.WIDTH = 600
-        self.HEIGHT = 500
-        self.window = pyglet.window.Window(self.WIDTH, self.HEIGHT, title)
+        self.WINDOW_SIZE = 600
+        self.window = pyglet.window.Window(self.WINDOW_SIZE, self.WINDOW_SIZE, title)
         self.window.on_draw = self.on_draw
         self.map = None
         self.distmap_pic = None
+        self.dijkstras_pic = None
         self.map_b = None
         self.robot = None
         self.path = None
         self.robot_b = None
+        self.nav_dir = None
+        self.nav_dir_b = None
         self.pf = None
         self.pf1_b = None
         self.pf2_b = None
         self.pf3_b = None
-        grid_line = np.array([[0, 0, N_CELLS*CELL_SIZE, 0]])
+        grid_line = np.array([[0, 0, N_SEARCH_CELLS*SEARCH_CELL_SIZE, 0]])
         self.grid_b = pyglet.graphics.Batch()
         self.grid_b.add(len(grid_line)*2, pyglet.gl.GL_LINES, None,
             ('v2f', grid_line.flatten()),
@@ -46,11 +48,19 @@ class Renderer:
         self.map_b = pyglet.graphics.Batch()
         self.map_b.add(len(mapp.walls)*2, pyglet.gl.GL_LINES, None,
             ('v2f', mapp.walls.flatten()),
-            ('c3B', (255,255,255)*len(mapp.walls)*2))
+            ('c3B', (0,0,255)*len(mapp.walls)*2))
         self.map_b.add(len(mapp.verts), pyglet.gl.GL_POINTS, None,
             ('v2f', mapp.verts.flatten()),
             ('c3B', (255,0,0)*len(mapp.verts)))
     
+    def set_nav_dir(self, nav_dir):
+        self.nav_dir = nav_dir
+        self.nav_dir_b = pyglet.graphics.Batch()
+        triangle = 0.3*np.vstack([[cos(phi)+0.6, sin(phi)] for phi in np.linspace(0., 2.*pi, 4)])
+        self.nav_dir_b.add(len(triangle), pyglet.gl.GL_LINE_STRIP, None,
+            ('v2f', triangle.flatten()))
+        
+
     def set_robot(self, robot):
         self.robot = robot
         self.robot_b = pyglet.graphics.Batch()
@@ -84,6 +94,9 @@ class Renderer:
 
     def set_distmap(self, distmap):
         self.distmap_pic = firebot_common.wall_collision.to_image(distmap)
+    
+    def set_dijkstras(self, dijkstras):
+        self.dijkstras_pic = firebot_common.wall_collision.to_image(dijkstras, maximum=4.0)
 
     def set_path(self, node):
         self.path = node
@@ -92,22 +105,32 @@ class Renderer:
         self.window.clear()
         pyglet.gl.glPushMatrix()
         pyglet.gl.glRotatef(90, 0, 0, 1)
-        pyglet.gl.glTranslatef(self.HEIGHT/2, -self.WIDTH/2, 0)
-        pyglet.gl.glScalef(200, 200, 1)
-        pyglet.gl.glTranslatef(-2.42/2, -2.42/2, 0)
+        pyglet.gl.glTranslatef(self.WINDOW_SIZE/2, -self.WINDOW_SIZE/2, 0)
+        pyglet.gl.glScalef(0.8 * self.WINDOW_SIZE / MAP_SIZE, 0.8 * self.WINDOW_SIZE / MAP_SIZE, 1)
+        pyglet.gl.glTranslatef(-MAP_SIZE/2, -MAP_SIZE/2, 0)
 
-        for i in range(N_CELLS):
-            with transform(0, i*CELL_SIZE, 0):
+        for i in range(N_SEARCH_CELLS):
+            with transform(0, i*SEARCH_CELL_SIZE, 0):
                 self.grid_b.draw()
-            with transform(i*CELL_SIZE, 0, pi/2.0):
+            with transform(i*SEARCH_CELL_SIZE, 0, pi/2.0):
                 self.grid_b.draw()
         
         if self.distmap_pic is not None:
             pyglet.gl.glPushMatrix()
-            pyglet.gl.glScalef(firebot_common.wall_collision.CELL_SIZE, firebot_common.wall_collision.CELL_SIZE, 1)
-            self.distmap_pic.anchor_x = 0 #self.distmap_pic.width // 2
-            self.distmap_pic.anchor_y = 0 #self.distmap_pic.height // 2
+            #pyglet.gl.glEnable(pyglet.gl.GL_TEXTURE_2D)
+            #pyglet.gl.glBindTexture(pyglet.gl.GL_TEXTURE_2D, self.distmap_pic.get_texture().id)
+            pyglet.gl.glTexParameteri(pyglet.gl.GL_TEXTURE_2D, pyglet.gl.GL_TEXTURE_MAG_FILTER, pyglet.gl.GL_NEAREST)
+            pyglet.gl.glScalef(DIST_CELL_SIZE, DIST_CELL_SIZE, 1)
             self.distmap_pic.blit(0, 0, 0)
+            pyglet.gl.glPopMatrix()
+
+        if self.dijkstras_pic is not None:
+            pyglet.gl.glPushMatrix()
+            #pyglet.gl.glEnable(pyglet.gl.GL_TEXTURE_2D)
+            #pyglet.gl.glBindTexture(pyglet.gl.GL_TEXTURE_2D, self.dijkstras_pic.get_texture().id)
+            pyglet.gl.glTexParameteri(pyglet.gl.GL_TEXTURE_2D, pyglet.gl.GL_TEXTURE_MAG_FILTER, pyglet.gl.GL_NEAREST)
+            pyglet.gl.glScalef(SEARCH_CELL_SIZE, SEARCH_CELL_SIZE, 1)
+            self.dijkstras_pic.blit(0, 0, 0)
             pyglet.gl.glPopMatrix()
 
         if self.map_b is not None:
@@ -117,6 +140,9 @@ class Renderer:
             self.robot_lines_gl.vertices = self.robot.lines.flatten()
             with transform(self.robot.x, self.robot.y, self.robot.angle):
                 self.robot_b.draw()
+            if self.nav_dir is not None:
+                with transform(self.robot.x, self.robot.y, atan2(self.nav_dir[1], self.nav_dir[0])):
+                    self.nav_dir_b.draw()
         
         if self.pf is not None:
             for i in range(self.pf.N):

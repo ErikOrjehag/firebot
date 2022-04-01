@@ -2,14 +2,7 @@
 import numpy as np
 from math import cos, sin, pi, sqrt, exp, fabs
 from random import random
-
-MAP_SIZE = 2.42
-N_CELLS = 20
-CELL_SIZE = MAP_SIZE / N_CELLS
-
-upsamp = 4
-N_CELLS *= upsamp
-CELL_SIZE /= upsamp
+from firebot_common.constants import N_DIST_CELLS, DIST_CELL_SIZE
 
 def is_wall_collision(pos, radius, walls):
     
@@ -72,22 +65,25 @@ def closest_wall_distance(pos, walls):
 
 
 def generate_distance_map(mapp):
-    distances = np.zeros((N_CELLS, N_CELLS))
-    for r in range(N_CELLS):
-        for c in range(N_CELLS):
-            distances[r, c] = closest_wall_distance(np.array([c * CELL_SIZE, r * CELL_SIZE]), mapp.walls)
+    distances = np.zeros((N_DIST_CELLS, N_DIST_CELLS))
+    for r in range(N_DIST_CELLS):
+        for c in range(N_DIST_CELLS):
+            distances[r, c] = closest_wall_distance(np.array([c * DIST_CELL_SIZE, r * DIST_CELL_SIZE]), mapp.walls)
     return distances
 
-def to_image(distances):
+def to_image(distances, maximum=None):
+    n = distances.shape[0]
     fmt = 'RGBA'
-    data = np.zeros((N_CELLS, N_CELLS, 4), np.float64)
+    data = np.zeros((n, n, 4), np.float64)
     data[...,3] = 1.0
-    data[...,0] = distances / distances.max()
+    data[...,0] = np.clip(distances / (maximum if maximum else distances.max()), 0.0, 1.0)
     data[...,1] = data[...,0]
     data[...,2] = data[...,0]
     data = (data.flatten() * 255).astype('uint8')
     data = (GLubyte * data.size)( *data)
-    pic = pyglet.image.ImageData(N_CELLS, N_CELLS, fmt, data, N_CELLS*len(fmt))
+    pic = pyglet.image.ImageData(n, n, fmt, data, n*len(fmt))
+    pic.anchor_x = 0
+    pic.anchor_y = 0
     return pic
 
 
@@ -99,11 +95,6 @@ def main():
     mapp = Map()
     distances = generate_distance_map(mapp)
     pic = to_image(distances)
-    #pic = pic.get_texture()
-    #pic.width *= 10
-    #pic.height *= 10
-    # pic.anchor_x = pic.width
-    # pic.anchor_y = 0
     window = pyglet.window.Window(600, 500, "Test")
     def on_draw():
         glEnable(GL_TEXTURE_2D)
@@ -112,7 +103,7 @@ def main():
         window.clear()
 
         pyglet.gl.glPushMatrix()
-        pyglet.gl.glScalef(200*CELL_SIZE, 200*CELL_SIZE, 1)
+        pyglet.gl.glScalef(200*DIST_CELL_SIZE, 200*DIST_CELL_SIZE, 1)
         pic.blit(0, 0, 0)
 
         pyglet.gl.glPopMatrix()

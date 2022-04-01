@@ -8,6 +8,7 @@ from firebot_common.mapp import Map
 from firebot_common.montecarlo import ParticleFilter
 import numpy as np
 from time import time
+from firebot_common.constants import MAP_SIZE, BODY_RADIUS
 
 class AiNode(Node):
 
@@ -18,14 +19,14 @@ class AiNode(Node):
         self.robot = Robot()
         self.map = Map()
         self.pf = ParticleFilter([
-            (50, 0.1, 2.3, 0.1, 2.3),
+            (50, BODY_RADIUS, MAP_SIZE-BODY_RADIUS, BODY_RADIUS, MAP_SIZE-BODY_RADIUS),
             #(50, 0.1, 0.8, 0.1, 1.1),
         ])
-        self.twist_sub = self.create_subscription(Twist, 'mouse_vel', self.twist_callback, 0)
+        self.twist_sub = self.create_subscription(Twist, 'cmd_vel', self.twist_callback, 0)
         self.hits_sub = self.create_subscription(Float64MultiArray, 'hits', self.hits_callback, 0)
         self.pose_pub = self.create_publisher(Pose, 'pose', 0)
         self.pf_pub = self.create_publisher(PoseArray, 'pf', 0)
-        self.dt = 0.050
+        self.dt = 0.02
         self.timer = self.create_timer(self.dt, self.timer_callback)
 
     def hits_callback(self, msg):
