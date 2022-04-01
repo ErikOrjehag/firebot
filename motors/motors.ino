@@ -4,11 +4,11 @@
 
 int LED_PIN = 13;
 int NUM_MOTORS = 2;
-int PIN_ENABLE[] = { 2, A7 };
+int PIN_ENABLE[] = { 2, 8 };
 int PIN_DIR[] = { 7, A0 };
 int DIR[] = { LOW, HIGH };
 int PIN_STEP[] = { 6, A1 };
-int PIN_MS1[] = { 3, A6 };
+int PIN_MS1[] = { 3, 9 };
 int PIN_MS2[] = { 4, A3 };
 int PIN_MS3[] = { 5, A2 };
 

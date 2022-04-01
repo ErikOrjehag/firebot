@@ -11,6 +11,7 @@ from firebot_common.robot import Robot
 from firebot_common.renderer import Renderer
 from firebot_common.mapp import Map
 from firebot_common.montecarlo import ParticleFilter
+from firebot_common.constants import MAP_SIZE, BODY_RADIUS
 
 class VizNode(Node):
 
@@ -19,7 +20,7 @@ class VizNode(Node):
         self.map = Map()
         self.robot = Robot()
         self.pf = ParticleFilter([
-            (50, 0.1, 2.3, 0.1, 2.3),
+            (50, BODY_RADIUS, MAP_SIZE-BODY_RADIUS, BODY_RADIUS, MAP_SIZE-BODY_RADIUS),
             #(50, 0.1, 0.8, 0.1, 1.1),
         ])
         self.renderer = Renderer("Vizualisation")
