@@ -45,6 +45,7 @@ def motor_node(node, executor):
         bus.write_byte(addr, s1l)
         bus.write_byte(addr, s0h ^ s0l ^ s1h ^ s1l)
         bus.write_byte(addr, 0x01010101)
+        node.get_logger().info(f"sent: {s}")
 
     node.create_subscription(geometry_msgs.msg.Twist, "/cmd_vel", sub_callback, 10)
 
@@ -53,12 +54,20 @@ def motor_node(node, executor):
     except KeyboardInterrupt:
         pass
 
+    bus.close()
+
 def main():
     rclpy.init()
     node = rclpy.create_node("motor_node")
     executor = rclpy.executors.SingleThreadedExecutor()
     executor.add_node(node)
-    motor_node(node, executor)
+    while True:
+        try:
+            motor_node(node, executor)
+        except KeyboardInterrupt:
+            break
+        except Exception:
+            pass
     executor.shutdown()
     node.destroy_node()
     rclpy.shutdown()
