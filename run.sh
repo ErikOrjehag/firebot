@@ -13,4 +13,6 @@ docker run\
   --env="QT_X11_NO_MITSHM=1"\
   --device=/dev/dri:/dev/dri\
   -v "${git_root}":/dev_ws/src/firebot\
+  --privileged\
+  -v /dev:/dev\
   -it --rm firebot bash

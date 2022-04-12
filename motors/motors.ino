@@ -23,12 +23,6 @@ unsigned long t = 0;
 
 void setup() {
 
-  Serial.begin(9600);
-
-  Wire.begin(0x8);
-
-  Wire.onReceive(receiveEvent);
-
   motor_ticks = new unsigned int[NUM_MOTORS];
   motor_remaining = new unsigned int[NUM_MOTORS];
 
@@ -51,7 +45,16 @@ void setup() {
     digitalWrite(PIN_MS3[i], LOW);
   }
 
+  set_motor_speed(0, 0);
+  set_motor_speed(1, 0);
+
   install_timer(125L);
+  
+  Serial.begin(9600);
+
+  //Wire.begin(0x8);
+
+  //Wire.onReceive(receiveEvent);
 }
 
 
@@ -88,7 +91,7 @@ void loop() {
   //int speed = 1000*(sin(millis() / 1000.0));
   //set_motor_speed(0, speed);
   //set_motor_speed(1, speed);
-  delay(10);
+  //delay(10);
 
   //while (Wire.available()) {
   //  Serial.println("something available");
@@ -97,9 +100,11 @@ void loop() {
 }
 
 void set_motor_speed(int motor, int speed) {
-  unsigned int ticks = (unsigned int) ((1000L * 1000000L) / (TIMER_INTERVAL * STEPS_PER_REV * abs(speed)));
+  unsigned int ticks;
   if (speed == 0) {
     ticks = UINT_MAX;
+  } else {
+    ticks = (unsigned int) ((1000L * 1000000L) / (TIMER_INTERVAL * STEPS_PER_REV * abs(speed)));
   }
   motor_ticks[motor] = ticks;
 
@@ -109,7 +114,6 @@ void set_motor_speed(int motor, int speed) {
   } else {
     digitalWrite(PIN_DIR[motor], !(speed < 0));
   }
-  //digitalWrite(PIN_DIR[motor], HIGH);
 }
 
 ISR(TIMER1_COMPA_vect) {
