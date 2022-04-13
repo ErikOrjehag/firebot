@@ -7,3 +7,4 @@ pyaudio
 scipy
 VL53L1X
 pytest-rerunfailures
+pyserial
