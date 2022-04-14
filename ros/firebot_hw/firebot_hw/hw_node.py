@@ -68,19 +68,20 @@ def run_loop(node, executor):
         n = 0
         ts = time.time()
         while rclpy.ok():
-            rec_buf.append(arduino.read())
-            if rec_buf[0] == START and rec_buf[-1] == STOP and checksum(list(rec_buf)[1:-2], int.from_bytes(rec_buf[-2], 'little')):
-                for i in range(0, N_SENSORS):
-                    sensors[i] = int.from_bytes(rec_buf[1+i*2+0], byteorder='little') << 8 | int.from_bytes(rec_buf[1+i*2+1], byteorder='little')
-                for i in range(0, N_TEMPS):
-                    temps[i] = int.from_bytes(rec_buf[1+N_SENSORS*2+i], byteorder='little')
-                n += 1
-                if n % 100 == 0:
-                    node.get_logger().info(f"{100 / (time.time() - ts):.1f} Hz")
-                    ts = time.time()
-                hits_pub.publish(std_msgs.msg.Float64MultiArray(data=sensors))
-                heat_pub.publish(std_msgs.msg.Float64MultiArray(data=temps))
-            executor.spin_once(timeout_sec=0.001)
+            if arduino.in_waiting > 0:
+                rec_buf.append(arduino.read())
+                if rec_buf[0] == START and rec_buf[-1] == STOP and checksum(list(rec_buf)[1:-2], int.from_bytes(rec_buf[-2], 'little')):
+                    for i in range(0, N_SENSORS):
+                        sensors[i] = int.from_bytes(rec_buf[1+i*2+0], byteorder='little') << 8 | int.from_bytes(rec_buf[1+i*2+1], byteorder='little')
+                    for i in range(0, N_TEMPS):
+                        temps[i] = int.from_bytes(rec_buf[1+N_SENSORS*2+i], byteorder='little')
+                    n += 1
+                    if n % 100 == 0:
+                        node.get_logger().info(f"{100 / (time.time() - ts):.1f} Hz")
+                        ts = time.time()
+                    hits_pub.publish(std_msgs.msg.Float64MultiArray(data=sensors))
+                    heat_pub.publish(std_msgs.msg.Float64MultiArray(data=temps))
+                executor.spin_once(timeout_sec=0.001)
     except KeyboardInterrupt:
         pass
 

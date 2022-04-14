@@ -38,7 +38,7 @@ uint8_t send_buf[SEND_BUF_SIZE];
 void setup() {
   Wire.begin();
 
-  Serial.begin(115200);
+  Serial.begin(2000000);
   Serial.println("VL53L1X Qwiic Test");
 
   for (int i = 0; i < N_SENSORS; i++) {
@@ -100,6 +100,7 @@ void loop() {
   for (int i = 0; i < SEND_BUF_SIZE; i++) {
     Serial.write(send_buf[i]);
   }
+  Serial.flush();
   
   while (Serial.available()) {
     for (int i = 0; i < REC_BUF_LEN - 1; i++) {
