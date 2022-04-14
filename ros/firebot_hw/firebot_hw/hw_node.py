@@ -38,7 +38,7 @@ def checksum(bts, chs):
     return checksum == chs
 
 def run_loop(node, executor):
-    arduino = serial.Serial('/dev/ttyUSB0', 115200, timeout=0.005)
+    arduino = serial.Serial('/dev/ttyUSB0', 2000000, timeout=0.005)
     time.sleep(3)
     node.get_logger().info("ready!")
     def cmd_vel_cb(msg: geometry_msgs.msg.Twist):
@@ -72,6 +72,7 @@ def run_loop(node, executor):
             if rec_buf[0] == START and rec_buf[-1] == STOP and checksum(list(rec_buf)[1:-2], int.from_bytes(rec_buf[-2], 'little')):
                 for i in range(0, N_SENSORS):
                     sensors[i] = int.from_bytes(rec_buf[1+i*2+0], byteorder='little') << 8 | int.from_bytes(rec_buf[1+i*2+1], byteorder='little')
+                    sensors[i] /= 1000.0
                 for i in range(0, N_TEMPS):
                     temps[i] = int.from_bytes(rec_buf[1+N_SENSORS*2+i], byteorder='little')
                 n += 1
