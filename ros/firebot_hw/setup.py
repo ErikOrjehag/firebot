@@ -24,6 +24,7 @@ setup(
             'tpa81_node = firebot_hw.tpa81_node:main',
             'servo_node = firebot_hw.servo_node:main',
             'motor_node = firebot_hw.motor_node:main',
+            'hw_node = firebot_hw.hw_node:main',
         ],
     },
 )

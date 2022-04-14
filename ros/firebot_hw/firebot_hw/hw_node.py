@@ -40,6 +40,7 @@ def checksum(bts, chs):
 def run_loop(node, executor):
     arduino = serial.Serial('/dev/ttyUSB0', 115200, timeout=0.005)
     time.sleep(3)
+    node.get_logger().info("ready!")
     def cmd_vel_cb(msg: geometry_msgs.msg.Twist):
         s0 = robot_vel_to_wheel_vel(msg.linear.x, -msg.angular.z, False)
         s1 = robot_vel_to_wheel_vel(msg.linear.x, -msg.angular.z, True)
@@ -49,13 +50,15 @@ def run_loop(node, executor):
         s0l = s[0] & 0xFF
         s1h = (s[1] >> 8) & 0xFF
         s1l = s[1] & 0xFF
-        arduino.write(START)
-        arduino.write(s0h)
-        arduino.write(s0l)
-        arduino.write(s1h)
-        arduino.write(s1l)
-        arduino.write(s0h ^ s0l ^ s1h ^ s1l)
-        arduino.write(STOP)
+        arduino.write(bytearray([
+            int.from_bytes(START, 'little'),
+            s0h,
+            s0l,
+            s1h,
+            s1l,
+            s0h ^ s0l ^ s1h ^ s1l,
+            int.from_bytes(STOP, 'little')
+        ]))
 
     hits_pub = node.create_publisher(std_msgs.msg.Float64MultiArray, "/hits", 10)
     heat_pub = node.create_publisher(std_msgs.msg.Float64MultiArray, "/heat", 10)
@@ -73,7 +76,7 @@ def run_loop(node, executor):
                     temps[i] = int.from_bytes(rec_buf[1+N_SENSORS*2+i], byteorder='little')
                 n += 1
                 if n % 100 == 0:
-                    print(f"{100 / (time.time() - ts):.1f} Hz", flush=True)
+                    node.get_logger().info(f"{100 / (time.time() - ts):.1f} Hz")
                     ts = time.time()
                 hits_pub.publish(std_msgs.msg.Float64MultiArray(data=sensors))
                 heat_pub.publish(std_msgs.msg.Float64MultiArray(data=temps))
@@ -83,7 +86,7 @@ def run_loop(node, executor):
 
 def main():
     rclpy.init()
-    node = rclpy.create_node("sensor_node")
+    node = rclpy.create_node("hw_node")
     executor = rclpy.executors.SingleThreadedExecutor()
     executor.add_node(node)
     run_loop(node, executor)
