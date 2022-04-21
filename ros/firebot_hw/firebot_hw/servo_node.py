@@ -12,8 +12,8 @@ BUZZ_PIN = 21
 BTN_GREEN_PIN = 24
 BTN_RED_PIN = 23
 
-SERVO_UP_DUTY = 2.5
-SERVO_DOWN_DUTY = 5.0
+SERVO_UP_DUTY = 10.0
+SERVO_DOWN_DUTY = 7.0
     
 def control_servo(node, executor):
     
