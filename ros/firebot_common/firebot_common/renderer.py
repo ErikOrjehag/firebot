@@ -5,7 +5,7 @@ from math import pi
 import numpy as np
 from math import cos, sin, atan2
 from contextlib import contextmanager
-from firebot_common.constants import DIST_CELL_SIZE, SEARCH_CELL_SIZE, N_SEARCH_CELLS, MAP_SIZE
+from firebot_common.constants import DIST_CELL_SIZE, SEARCH_CELL_SIZE, N_SEARCH_CELLS, MAP_SIZE, BODY_RADIUS
 import firebot_common.wall_collision
 
 @contextmanager
@@ -27,6 +27,11 @@ class Renderer:
         self.map = None
         self.distmap_pic = None
         self.dijkstras_pic = None
+        self.heat = None
+        self.heat_b = None
+        self.heat_r = None
+        self.fire = None
+        self.fire_b = None
         self.map_b = None
         self.robot = None
         self.path = None
@@ -59,7 +64,21 @@ class Renderer:
         triangle = 0.3*np.vstack([[cos(phi)+0.6, sin(phi)] for phi in np.linspace(0., 2.*pi, 4)])
         self.nav_dir_b.add(len(triangle), pyglet.gl.GL_LINE_STRIP, None,
             ('v2f', triangle.flatten()))
-        
+
+    def set_fire(self, fire):
+        self.fire = fire
+        circle = 0.03*np.vstack([[cos(phi), sin(phi)] for phi in np.linspace(0., 2.*pi, 20)])
+        g1 = pyglet.graphics.Group()
+        self.fire_b = pyglet.graphics.Batch()
+        self.fire_b.add(len(circle), pyglet.gl.GL_LINE_STRIP, g1,
+            ('v2f', circle.flatten()),
+            ('c3B', (255,150,0)*len(circle)))
+
+    def set_heat(self, heat):
+        if self.heat_b is None:
+            self.heat_b = pyglet.graphics.Batch()
+            self.heat_r = shapes.Rectangle(0.0,0.0,50.0,50.0,color=(255,0,0),batch=self.heat_b)
+        self.heat = heat
 
     def set_robot(self, robot):
         self.robot = robot
@@ -72,7 +91,13 @@ class Renderer:
             ('v2f', circle.flatten()))
         self.robot_b.add(len(triangle), pyglet.gl.GL_LINE_STRIP, g2,
             ('v2f', triangle.flatten()))
-        self.robot_lines_gl = self.robot_b.add(len(robot.lines)*2, pyglet.gl.GL_LINES, None,
+        heat_lines = np.hstack((
+            BODY_RADIUS * 0.1 * robot.heat_dirs,
+            BODY_RADIUS * 1.2 * robot.heat_dirs ))
+        self.robot_b.add(len(heat_lines)*2, pyglet.gl.GL_LINES, None,
+            ('v2f', heat_lines.flatten()),
+            ('c3B', (0,255,0)*len(heat_lines)*2))
+        self.sensor_lines_gl = self.robot_b.add(len(robot.lines)*2, pyglet.gl.GL_LINES, None,
             ('v2f', robot.lines.flatten()),
             ('c3B', (255,0,0)*len(robot.lines)*2))
 
@@ -103,6 +128,15 @@ class Renderer:
 
     def on_draw(self):
         self.window.clear()
+
+        if self.heat is not None:
+            pyglet.gl.glPushMatrix()
+            for i in range(len(self.heat)):
+                    with transform(1+51*i, 1, 0):
+                        self.heat_r.opacity = 255 * np.clip(self.heat[i] / 100, 0, 1)
+                        self.heat_b.draw()
+            pyglet.gl.glPopMatrix()
+
         pyglet.gl.glPushMatrix()
         pyglet.gl.glRotatef(90, 0, 0, 1)
         pyglet.gl.glTranslatef(self.WINDOW_SIZE/2, -self.WINDOW_SIZE/2, 0)
@@ -136,8 +170,12 @@ class Renderer:
         if self.map_b is not None:
             self.map_b.draw()
         
+        if self.fire is not None:
+            with transform(self.fire[0], self.fire[1], 0.0):
+                self.fire_b.draw()
+
         if self.robot is not None:
-            self.robot_lines_gl.vertices = self.robot.lines.flatten()
+            self.sensor_lines_gl.vertices = self.robot.lines.flatten()
             with transform(self.robot.x, self.robot.y, self.robot.angle):
                 self.robot_b.draw()
             if self.nav_dir is not None:

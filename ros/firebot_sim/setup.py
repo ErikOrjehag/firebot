@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'sim_node = firebot_sim.sim_node:main'
+            'sim_node = firebot_sim.sim_node:main',
+            'input_node = firebot_sim.input_node:main'
         ],
     },
 )

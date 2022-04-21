@@ -17,6 +17,9 @@ class Robot():
 
         self.hits = np.ones(self.N_sensors) * 0.1
 
+        self.heat_fov = 41 * pi / 180
+        self.heat_dirs = np.vstack([[cos(phi), sin(phi)] for phi in np.linspace(self.heat_fov/2, -self.heat_fov/2, 8, endpoint=True)])
+
         posx = np.random.uniform(BODY_RADIUS, MAP_SIZE-BODY_RADIUS)
         posy = np.random.uniform(BODY_RADIUS, MAP_SIZE-BODY_RADIUS)
         self.pos = pos = np.hstack((posx, posy))
@@ -29,6 +32,10 @@ class Robot():
     @property
     def y(self):
         return self.pos[1]
+    
+    @property
+    def dir(self):
+        return np.array([cos(self.angle), sin(self.angle)])
     
     @x.setter
     def x(self, x):

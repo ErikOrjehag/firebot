@@ -7,7 +7,6 @@ from rclpy.node import Node
 from std_msgs.msg import Float64MultiArray
 from geometry_msgs.msg import Twist
 from firebot_sim.simulation import Simulation
-from firebot_common.renderer import Renderer
 
 class SimNode(Node):
 
@@ -15,7 +14,7 @@ class SimNode(Node):
         super().__init__('viz_node')
         self.simulation = Simulation()
         self.hits_pub = self.create_publisher(Float64MultiArray, 'hits', 0)
-        self.twist_sub = self.create_subscription(Twist, 'mouse_vel', self.twist_callback, 0)
+        self.twist_sub = self.create_subscription(Twist, 'cmd_vel', self.twist_callback, 0)
         self.pub_timer = self.create_timer(0.02, self.timer_callback)
 
     def twist_callback(self, msg):

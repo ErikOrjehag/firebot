@@ -1,14 +1,13 @@
 
-
+import std_msgs.msg
+import rclpy.executors
+import rclpy.node
 import pyaudio
 import numpy as np
 import scipy.signal
 import struct
 import math
-
-# p = pyaudio.PyAudio()
-# for ii in range(p.get_device_count()):
-#     print(f"{ii}) {p.get_device_info_by_index(ii).get('name')}")
+import std_msgs.msg
 
 SHORT_NORMALIZE = 1.0 / 1000.0
 
@@ -36,7 +35,10 @@ def get_rms(samples):
         sum_squares += sample * sample
     return math.sqrt(sum_squares / len(samples))
 
-def block_until_start_signal():
+def poll_mic(node, executor):
+    start_pub = node.create_publisher(
+        std_msgs.msg.Empty, "/start", 1)
+
     stream = pyaudio.PyAudio().open(format=pyaudio.paInt16,
                                 channels=1,
                                 rate=RATE,
@@ -49,11 +51,28 @@ def block_until_start_signal():
 
     stream.start_stream()
 
-    while stream.is_active():
-        block = stream.read(INPUT_FRAMES_PER_BLOCK, exception_on_overflow=False)
-        samples = normalize(block)
-        bandpass_samples, zi = scipy.signal.lfilter(b, a, samples, zi=zi)
-        bandpass_ampl = get_rms(bandpass_samples)
-        print(f"Amplitude: {bandpass_ampl:.3f}")
-        if bandpass_ampl > 0.1:
-            break
+    try:
+        while stream.is_active():
+            block = stream.read(INPUT_FRAMES_PER_BLOCK, exception_on_overflow=False)
+            samples = normalize(block)
+            bandpass_samples, zi = scipy.signal.lfilter(b, a, samples, zi=zi)
+            bandpass_ampl = get_rms(bandpass_samples)
+            print(f"Amplitude: {bandpass_ampl:.3f}")
+            if bandpass_ampl > 0.1:
+                start_pub.publish(std_msgs.msg.Empty())
+            executor.spin_once(timeout_sec=0.001)
+    except KeyboardInterrupt:
+        pass
+
+def main():
+    rclpy.init()
+    node = rclpy.create_node("servo_node")
+    executor = rclpy.executors.SingleThreadedExecutor()
+    executor.add_node(node)
+    poll_mic(node, executor)
+    executor.shutdown()
+    node.destroy_node()
+    rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()

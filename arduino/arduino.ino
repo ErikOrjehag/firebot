@@ -100,7 +100,6 @@ void loop() {
   for (int i = 0; i < SEND_BUF_SIZE; i++) {
     Serial.write(send_buf[i]);
   }
-  Serial.flush();
   
   while (Serial.available()) {
     for (int i = 0; i < REC_BUF_LEN - 1; i++) {
@@ -124,6 +123,8 @@ void loop() {
     set_motor_speed(0, 0);
     set_motor_speed(1, 0);
   }
+
+  delay(50);
 }
 
 void set_motor_speed(int motor, int speed) {

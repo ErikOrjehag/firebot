@@ -1,6 +1,6 @@
 
 import numpy as np
-from math import cos, sin, pi, sqrt, exp, fabs
+from math import cos, sin, pi, sqrt, exp, fabs, acos
 from random import random
 
 def calc_hits(pos, angle, sensor_dirs, sensor_offsets, walls):
@@ -47,3 +47,9 @@ def calc_hits(pos, angle, sensor_dirs, sensor_offsets, walls):
     hits = (np.bitwise_not(mask) * 1e9 + h).min(1) - sensor_offsets
 
     return hits
+
+def angle_between(v1, v2):
+    alpha = acos(v1.dot(np.array([v2[0], v2[1]])))
+    if v1[0]*v2[1] - v1[1]*v2[0] > 0:
+        alpha *= -1
+    return alpha
