@@ -29,12 +29,6 @@ def generate_launch_description():
                 output="screen",
             ),
             Node(
-                package="firebot_viz",
-                executable="viz_node",
-                name="viz_node",
-                output="screen",
-            ),
-            Node(
                 package="firebot_ai",
                 executable="ai_node",
                 name="ai_node",
