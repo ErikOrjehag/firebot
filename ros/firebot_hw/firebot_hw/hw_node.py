@@ -13,7 +13,7 @@ WHEEL_BASELINE = 0.17
 WHEEL_RADIUS = 0.1 / 2
 WHEEL_CIRCUMFERENCE = WHEEL_RADIUS * 2.0 * math.pi
 
-BASELINE_CIRCUMFERENCE = WHEEL_BASELINE * 2.0 * math.pi
+BASELINE_CIRCUMFERENCE = WHEEL_BASELINE * math.pi
 WHEEL_BASELINE_RATIO = BASELINE_CIRCUMFERENCE / WHEEL_CIRCUMFERENCE
 
 N_SENSORS = 8
@@ -75,7 +75,7 @@ def run_loop(node, executor):
                         sensors[i] = int.from_bytes(rec_buf[1+n*2+0], byteorder='little') << 8 | int.from_bytes(rec_buf[1+n*2+1], byteorder='little')
                         sensors[i] /= 1000.0
                     for i in range(0, N_TEMPS):
-                        temps[i] = int.from_bytes(rec_buf[1+N_SENSORS*2+i], byteorder='little')
+                        temps[N_TEMPS-1-i] = int.from_bytes(rec_buf[1+N_SENSORS*2+i], byteorder='little')
                     n += 1
                     if n % 100 == 0:
                         node.get_logger().info(f"{100 / (time.time() - ts):.1f} Hz")

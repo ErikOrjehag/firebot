@@ -39,12 +39,19 @@ def poll_mic(node, executor):
     start_pub = node.create_publisher(
         std_msgs.msg.Empty, "/start", 1)
 
-    stream = pyaudio.PyAudio().open(format=pyaudio.paInt16,
+    p = pyaudio.PyAudio()
+
+    for device_index in range(p.get_device_count()):
+        dev = p.get_device_info_by_index(device_index)
+        if "USB PnP Sound Device" in dev["name"]:
+            break
+
+    stream = p.open(format=pyaudio.paInt16,
                                 channels=1,
                                 rate=RATE,
                                 input=True,
                                 frames_per_buffer=INPUT_FRAMES_PER_BLOCK,
-                                input_device_index=0)
+                                input_device_index=device_index)
 
     b, a = design_filter(950.0, 1050.0, RATE, 3)
     zi = scipy.signal.lfilter_zi(b, a)

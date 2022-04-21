@@ -18,7 +18,7 @@ class ParticleFilter():
     def __init__(self, initialAreas):
         self.N = 0
 
-        self.noise = 0.05
+        self.noise = 0.02
 
         self.pos = np.empty((0, 2))
 
@@ -40,14 +40,11 @@ class ParticleFilter():
         self.kf_angle = None
 
     def update(self, linear, angular, robot, walls):
-
-        self.pos += linear*np.vstack((np.cos(self.angle), np.sin(self.angle))).T
-        self.angle += angular
-
+        
         if True or np.linalg.norm(linear) > 1e-9 or fabs(angular) > 1e-9:
             for i in range(self.N):
                 hits = calc_hits(self.pos[i], self.angle[i], robot.sensor_dirs, robot.sensor_offsets, walls)
-                self.w[i] += 0.01*(np.prod(1./(self.noise*sqrt(2*pi)) * np.exp(-0.5*((hits-robot.hits)/self.noise)**2)) - self.w[i])
+                self.w[i] += 0.5*(np.prod(1./(self.noise*sqrt(2*pi)) * np.exp(-0.5*((hits-robot.hits)/self.noise)**2)) - self.w[i])
             self.w = normalize_weights(self.w)
 
             best_i = np.argmax(self.w)
