@@ -47,7 +47,7 @@ class ParticleFilter():
         if True or np.linalg.norm(linear) > 1e-9 or fabs(angular) > 1e-9:
             for i in range(self.N):
                 hits = calc_hits(self.pos[i], self.angle[i], robot.sensor_dirs, robot.sensor_offsets, walls)
-                self.w[i] += 0.1*(np.prod(1./(self.noise*sqrt(2*pi)) * np.exp(-0.5*((hits-robot.hits)/self.noise)**2)) - self.w[i])
+                self.w[i] += 0.01*(np.prod(1./(self.noise*sqrt(2*pi)) * np.exp(-0.5*((hits-robot.hits)/self.noise)**2)) - self.w[i])
             self.w = normalize_weights(self.w)
 
             best_i = np.argmax(self.w)
@@ -57,7 +57,7 @@ class ParticleFilter():
             # Resample
             inds_sort = np.argsort(self.w)
             n1 = int(self.N*0.4)
-            n2 = int(self.N*0.3)
+            n2 = int(self.N*0.1)
             inds_redo = inds_sort[:n1]      # Resample uniformly
             inds_bad = inds_sort[n1:n1+n2]  # Resample normal gauss around good
             inds_good = inds_sort[n1+n2:]   # Keep as is
