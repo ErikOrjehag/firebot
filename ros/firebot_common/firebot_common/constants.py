@@ -1,7 +1,8 @@
 
 import numpy as np
+import firebot_common.data
 
-MAP_SIZE = 0.995  # 2.42
+MAP_SIZE = np.max(firebot_common.data.vertices) / 100.0 # 0.995  # 2.42
 
 # Search
 N_SEARCH_CELLS: int = 30  # 60

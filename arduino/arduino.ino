@@ -124,7 +124,7 @@ void loop() {
     set_motor_speed(1, 0);
   }
 
-  delay(50);
+  delay(200);
 }
 
 void set_motor_speed(int motor, int speed) {

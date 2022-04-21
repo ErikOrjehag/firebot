@@ -30,6 +30,10 @@ class VizNode(Node):
         self.pose_sub = self.create_subscription(Pose, 'pose', self.pose_callback, 0)
         self.hits_sub = self.create_subscription(Float64MultiArray, 'hits', self.hits_callback, 0)
         self.pf_sub = self.create_subscription(PoseArray, 'pf', self.pf_callback, 0)
+        self.heat_sub = self.create_subscription(Float64MultiArray, 'heat', self.heat_callback, 0)
+
+    def heat_callback(self, msg):
+        self.renderer.set_heat(msg.data)
 
     def pose_callback(self, msg):
         self.robot.x = msg.position.x
