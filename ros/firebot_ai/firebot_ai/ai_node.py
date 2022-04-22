@@ -48,6 +48,7 @@ class AiNode(Node):
         self.led_green_pub = self.create_publisher(Bool, "led/green", 1)
         self.led_red_pub = self.create_publisher(Bool, "led/red", 1)
         self.carrot_pub = self.create_publisher(Pose, "carrot", 1)
+        self.dijkstras_pub = self.create_publisher(Float64MultiArray, "dijkstras", 1)
 
         self.create_subscription(Float64MultiArray, "hits", self.hits_callback, rclpy.qos.qos_profile_sensor_data)
         self.create_subscription(Float64MultiArray, "heat", self.heat_callback, rclpy.qos.qos_profile_sensor_data)
@@ -73,6 +74,9 @@ class AiNode(Node):
         MAX_ANGULAR = 0.3
         MAX_LINEAR = 0.08
         ts = time()
+
+        # self.dijkstras = firebot_common.dijkstras.dijkstras_search(self.distmap, 2.0, 2.05) + 3.0 * np.clip(1.0 - self.distmap / (BODY_RADIUS*2), 0.0, 1.0)
+        # self.dijkstras_pub.publish(Float64MultiArray(data=list(self.dijkstras.flatten())))
 
         while rclpy.ok():
             rclpy.spin_once(self, timeout_sec=0.01)
@@ -117,7 +121,8 @@ class AiNode(Node):
                             sleep(1.0)
                 b = np.array(rooms[room_i]["bounds"]) / 100.0
                 self.goal = np.array([(b[0] + b[1]) / 2, (b[2] + b[3]) / 2])
-                self.dijkstras = firebot_common.dijkstras.dijkstras_search(self.distmap, self.goal[0], self.goal[1]) + 0.3 * np.clip(1.0 - self.distmap / (BODY_RADIUS*2), 0.0, 1.0)
+                self.dijkstras = firebot_common.dijkstras.dijkstras_search(self.distmap, self.goal[0], self.goal[1]) + 3.0 * np.clip(1.0 - self.distmap / (BODY_RADIUS*2), 0.0, 1.0)
+                self.dijkstras_pub.publish(Float64MultiArray(data=list(self.dijkstras.flatten())))
 
             # Heat sensor
             FLAME_HEAT = 60.0

@@ -68,7 +68,7 @@ def generate_distance_map(mapp):
     distances = np.zeros((N_DIST_CELLS, N_DIST_CELLS))
     for r in range(N_DIST_CELLS):
         for c in range(N_DIST_CELLS):
-            distances[r, c] = closest_wall_distance(np.array([c * DIST_CELL_SIZE, r * DIST_CELL_SIZE]), mapp.walls)
+            distances[r, c] = closest_wall_distance(np.array([(c+0.5) * DIST_CELL_SIZE, (r+0.5) * DIST_CELL_SIZE]), mapp.walls)
     return distances
 
 def to_image(distances, maximum=None):
