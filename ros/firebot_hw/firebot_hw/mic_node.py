@@ -36,6 +36,8 @@ def get_rms(samples):
     return math.sqrt(sum_squares / len(samples))
 
 def poll_mic(node, executor):
+    node.get_logger().info("Starting mic node")
+
     start_pub = node.create_publisher(
         std_msgs.msg.Empty, "/start", 1)
 
@@ -64,7 +66,7 @@ def poll_mic(node, executor):
             samples = normalize(block)
             bandpass_samples, zi = scipy.signal.lfilter(b, a, samples, zi=zi)
             bandpass_ampl = get_rms(bandpass_samples)
-            print(f"Amplitude: {bandpass_ampl:.3f}")
+            # print(f"Amplitude: {bandpass_ampl:.3f}")
             if bandpass_ampl > 0.1:
                 start_pub.publish(std_msgs.msg.Empty())
             executor.spin_once(timeout_sec=0.001)

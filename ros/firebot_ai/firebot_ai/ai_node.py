@@ -44,6 +44,9 @@ class AiNode(Node):
 
         self.cmd_vel_pub = self.create_publisher(Twist, "cmd_vel", 1)
         self.snuff_pub = self.create_publisher(Bool, "snuff", 1)
+        self.buzz_pub = self.create_publisher(Bool, "buzz", 1)
+        self.led_green_pub = self.create_publisher(Bool, "led/green", 1)
+        self.led_red_pub = self.create_publisher(Bool, "led/red", 1)
         self.carrot_pub = self.create_publisher(Pose, "carrot", 1)
 
         self.create_subscription(Float64MultiArray, "hits", self.hits_callback, rclpy.qos.qos_profile_sensor_data)
@@ -68,7 +71,7 @@ class AiNode(Node):
         
         SNUFF_DIST = 0.03
         MAX_ANGULAR = 0.3
-        MAX_LINEAR = 0.05
+        MAX_LINEAR = 0.08
         ts = time()
 
         while rclpy.ok():
@@ -117,8 +120,11 @@ class AiNode(Node):
                 self.dijkstras = firebot_common.dijkstras.dijkstras_search(self.distmap, self.goal[0], self.goal[1]) + 0.3 * np.clip(1.0 - self.distmap / (BODY_RADIUS*2), 0.0, 1.0)
 
             # Heat sensor
+            FLAME_HEAT = 60.0
             alphas = np.linspace(HEAT_FOV/2, -HEAT_FOV/2, 8)
-            if np.max(self.heat) > 40.0:
+            if np.max(self.heat) > FLAME_HEAT:
+                self.led_red_pub.publish(Bool(data=True))
+                self.get_logger().info("I saw a candle")
                 alpha = np.average(alphas, weights=self.heat)
                 msg = Twist()
                 msg.angular.z = signed_limit(dt * 30.0 * alpha, MAX_ANGULAR / 2)
@@ -139,7 +145,7 @@ class AiNode(Node):
                         rclpy.spin_once(self, timeout_sec=0.01)
                     self.cmd_vel_pub.publish(Twist())
                     self.get_logger().info(f"heat: {np.max(self.heat):.3f}")
-                    if np.max(self.heat) < 40.0:
+                    if np.max(self.heat) < FLAME_HEAT:
                         self.get_logger().info("Candle got snuffed!")
                         self.candle_snuffed = True
                         self.dijkstras = None
@@ -151,9 +157,17 @@ class AiNode(Node):
                     self.localizing_ts = None
 
                     if np.linalg.norm(self.goal - self.pos) < 0.1:
-                        self.candle_look_ts = time()
+                        if self.candle_snuffed:
+                            self.get_logger().info("Done!")
+                            while rclpy.ok():
+                                self.led_green_pub.publish(Bool(data=int(time()) % 2 == 0))
+                                self.buzz_pub.publish(Bool(data=int(time()) % 2 == 0))
+                                rclpy.spin_once(self, timeout_sec=0.001)
+                        else:
+                            if self.candle_look_ts is None:
+                                self.candle_look_ts = time()
 
-                    if self.candle_look_ts is not None and time() - self.candle_look_ts > MAX_ANGULAR / (2.0 * pi):
+                    if self.candle_look_ts is not None and time() - self.candle_look_ts > (2.0 * pi) / MAX_ANGULAR:
                         self.get_logger().info("Done looking for candle")
                         self.candle_look_ts = None
                         self.dijkstras = None
