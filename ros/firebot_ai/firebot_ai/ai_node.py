@@ -3,11 +3,15 @@ import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Pose, Twist, PoseArray
 from std_msgs.msg import Float64MultiArray, Bool, Float64
+from firebot_common.calc_hits import angle_between
 from firebot_common.mapp import Map
 import numpy as np
 from time import time
 from firebot_common.constants import MAP_SIZE, BODY_RADIUS, HEAT_FOV
 import rclpy.qos
+import firebot_common.wall_collision
+import firebot_common.dijkstras
+from math import cos, sin
 
 def signed_limit(value, limit) -> float:
     return np.sign(value) * min(abs(value), limit)
@@ -22,7 +26,13 @@ class AiNode(Node):
     def __init__(self):
         super().__init__('viz_node')
         self.heat = [0] * 8
-        self.pose = None
+        self.pos = None
+        self.angle = None
+        self.confidence = 0.0
+        self.goal_pos = np.array([0.2, 0.2])
+        self.map = Map()
+        self.distmap = firebot_common.wall_collision.generate_distance_map(self.map)
+        self.dijkstras = firebot_common.dijkstras.dijkstras_search(self.distmap, self.goal_pos[0], self.goal_pos[1]) + 0.3 * np.clip(1.0 - self.distmap / (BODY_RADIUS*2), 0.0, 1.0)
         
         self.cmd_vel_pub = self.create_publisher(Twist, "cmd_vel", 1)
         self.snuff_pub = self.create_publisher(Bool, "snuff", 1)
@@ -51,9 +61,14 @@ class AiNode(Node):
         ts = time()
 
         while rclpy.ok():
+            rclpy.spin_once(self, timeout_sec=0.01)
+
             t = time()
             dt = t - ts
             ts = t
+
+            if self.pos is None or self.angle is None:
+                continue
 
             # Heat sensor
             alphas = np.linspace(HEAT_FOV/2, -HEAT_FOV/2, 8)
@@ -76,7 +91,19 @@ class AiNode(Node):
                         self.cmd_vel_pub.publish(msg)
                     self.cmd_vel_pub.publish(Twist())
 
-            rclpy.spin_once(self, timeout_sec=0.01)
+            else:
+
+                if self.confidence > 0.8:
+                    dir = firebot_common.dijkstras.flow(self.dijkstras, *(self.pos + 0.0 * np.array([cos(self.angle), sin(self.angle)])))
+                    msg = Twist()
+                    robot_dir = np.array([cos(self.angle), sin(self.angle)])
+                    alpha = angle_between(dir, robot_dir)
+                    msg.angular.z = signed_limit(dt * 10.0 * alpha, 0.1)
+                    if abs(msg.angular.z) < 0.05:
+                        msg.linear.x = 0.03
+                    self.cmd_vel_pub.publish(msg)
+                else:
+                    pass
         
 
 def main(args=None):

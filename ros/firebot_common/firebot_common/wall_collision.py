@@ -87,30 +87,30 @@ def to_image(distances, maximum=None):
     return pic
 
 
-from pyglet.gl import *
+# from pyglet.gl import *
 
-def main():
-    from mapp import Map
-    import pyglet
-    mapp = Map()
-    distances = generate_distance_map(mapp)
-    pic = to_image(distances)
-    window = pyglet.window.Window(600, 500, "Test")
-    def on_draw():
-        glEnable(GL_TEXTURE_2D)
-        glBindTexture(GL_TEXTURE_2D, pic.get_texture().id)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
-        window.clear()
+# def main():
+#     from mapp import Map
+#     import pyglet
+#     mapp = Map()
+#     distances = generate_distance_map(mapp)
+#     pic = to_image(distances)
+#     window = pyglet.window.Window(600, 500, "Test")
+#     def on_draw():
+#         glEnable(GL_TEXTURE_2D)
+#         glBindTexture(GL_TEXTURE_2D, pic.get_texture().id)
+#         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
+#         window.clear()
 
-        pyglet.gl.glPushMatrix()
-        pyglet.gl.glScalef(200*DIST_CELL_SIZE, 200*DIST_CELL_SIZE, 1)
-        pic.blit(0, 0, 0)
+#         pyglet.gl.glPushMatrix()
+#         pyglet.gl.glScalef(200*DIST_CELL_SIZE, 200*DIST_CELL_SIZE, 1)
+#         pic.blit(0, 0, 0)
 
-        pyglet.gl.glPopMatrix()
+#         pyglet.gl.glPopMatrix()
 
-    window.on_draw = on_draw
-    pyglet.app.run()
+#     window.on_draw = on_draw
+#     pyglet.app.run()
 
 
-if __name__ == '__main__':
-    main()
+# if __name__ == '__main__':
+#     main()
