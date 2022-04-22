@@ -10,6 +10,7 @@ import numpy as np
 from time import time
 from firebot_common.constants import MAP_SIZE, BODY_RADIUS
 import rclpy.qos
+from firebot_common.data import rooms
 
 class AiNode(Node):
 
@@ -20,10 +21,17 @@ class AiNode(Node):
         self.ts = time()
         self.robot = Robot()
         self.map = Map()
-        self.pf = ParticleFilter([
-            (50, BODY_RADIUS, MAP_SIZE-BODY_RADIUS, BODY_RADIUS, MAP_SIZE-BODY_RADIUS),
+        initial_guess = []
+        for room in rooms:
+            b = np.array(room["bounds"]) / 100.0
+            initial_guess.append([12, b[0] + BODY_RADIUS, b[1] - BODY_RADIUS, b[2] + BODY_RADIUS, b[3] - BODY_RADIUS])
+        initial_guess[0][0] += 1
+        initial_guess[1][0] += 1
+        self.pf = ParticleFilter(initial_guess)
+        #([
+            #(50, BODY_RADIUS, MAP_SIZE-BODY_RADIUS, BODY_RADIUS, MAP_SIZE-BODY_RADIUS),
             #(50, 0.1, 0.8, 0.1, 1.1),
-        ])
+        #])
         self.twist_sub = self.create_subscription(Twist, "cmd_vel", self.twist_callback, 1)
         self.hits_sub = self.create_subscription(Float64MultiArray, "hits", self.hits_callback, rclpy.qos.qos_profile_sensor_data)
         self.pose_pub = self.create_publisher(Pose, "pose", 1)
@@ -59,7 +67,7 @@ class AiNode(Node):
                 self.map.walls
             )
         t = time() - t1
-        self.get_logger().info(f't: {t:.3f}, confidence: {self.pf.confidence:.3f}')
+        # self.get_logger().info(f't: {t:.3f}, confidence: {self.pf.confidence:.3f}')
         if self.pf.best_pos is not None:
             pose_msg = Pose()
             pose_msg.position.x = self.pf.best_pos[0]

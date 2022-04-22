@@ -19,7 +19,7 @@ class ParticleFilter():
     def __init__(self, initialAreas):
         self.N = 0
 
-        self.noise = 0.02
+        self.noise = 0.05
 
         self.pos = np.empty((0, 2))
 
