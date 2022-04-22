@@ -9,6 +9,7 @@ from firebot_common.montecarlo import ParticleFilter
 import numpy as np
 from time import time
 from firebot_common.constants import MAP_SIZE, BODY_RADIUS
+import rclpy.qos
 
 def signed_limit(value, limit) -> float:
     return np.sign(value) * min(abs(value), limit)
@@ -32,14 +33,14 @@ class AiNode(Node):
             (50, BODY_RADIUS, MAP_SIZE-BODY_RADIUS, BODY_RADIUS, MAP_SIZE-BODY_RADIUS),
             #(50, 0.1, 0.8, 0.1, 1.1),
         ])
-        self.twist_sub = self.create_subscription(Twist, "cmd_vel", self.twist_callback, 5)
-        self.hits_sub = self.create_subscription(Float64MultiArray, "hits", self.hits_callback, 5)
-        self.heat_sub = self.create_subscription(Float64MultiArray, "heat", self.heat_callback, 5)
-        self.pose_pub = self.create_publisher(Pose, "pose", 5)
-        self.pf_pub = self.create_publisher(PoseArray, "pf", 5)
-        self.cmd_vel_pub = self.create_publisher(Twist, "cmd_vel", 5)
-        self.snuff_pub = self.create_publisher(Bool, "snuff", 5)
-        self.dt = 0.1
+        self.twist_sub = self.create_subscription(Twist, "cmd_vel", self.twist_callback, 1)
+        self.hits_sub = self.create_subscription(Float64MultiArray, "hits", self.hits_callback, rclpy.qos.qos_profile_sensor_data)
+        self.heat_sub = self.create_subscription(Float64MultiArray, "heat", self.heat_callback, rclpy.qos.qos_profile_sensor_data)
+        self.pose_pub = self.create_publisher(Pose, "pose", 1)
+        self.pf_pub = self.create_publisher(PoseArray, "pf", 1)
+        self.cmd_vel_pub = self.create_publisher(Twist, "cmd_vel", 1)
+        self.snuff_pub = self.create_publisher(Bool, "snuff", 1)
+        self.dt = 0.05
         self.timer = self.create_timer(self.dt, self.timer_callback)
 
     def heat_callback(self, msg: Float64MultiArray):
@@ -53,6 +54,8 @@ class AiNode(Node):
         self.angular = msg.angular.z
         t = time()
         dt = t - self.ts
+        if dt > 0.2:
+            dt = 0.2
         self.ts = t
         linear = dt * msg.linear.x
         angular = dt * msg.angular.z
@@ -62,7 +65,7 @@ class AiNode(Node):
     def timer_callback(self):
         # Localization
         t1 = time()
-        for _ in range(5):
+        for _ in range(1):
             self.pf.update(
                 self.linear,
                 self.angular,
@@ -70,7 +73,7 @@ class AiNode(Node):
                 self.map.walls
             )
         t = time() - t1
-        self.get_logger().info(f't: {t:.3f}')
+        self.get_logger().info(f't: {t:.3f}, confidence: {self.pf.confidence:.3f}')
         if self.pf.best_pos is not None:
             pose_msg = Pose()
             pose_msg.position.x = self.pf.best_pos[0]
