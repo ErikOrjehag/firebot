@@ -6,7 +6,7 @@ from std_msgs.msg import Float64MultiArray, Bool, Float64
 from firebot_common.calc_hits import angle_between
 from firebot_common.mapp import Map
 import numpy as np
-from time import time
+from time import time, sleep
 from firebot_common.constants import MAP_SIZE, BODY_RADIUS, HEAT_FOV, SEARCH_CELL_SIZE
 import rclpy.qos
 import firebot_common.wall_collision
@@ -39,6 +39,8 @@ class AiNode(Node):
         self.dijkstras = None
 
         self.look_for_candle = False
+        self.candle_look_ts = None
+        self.candle_snuffed = False
 
         self.cmd_vel_pub = self.create_publisher(Twist, "cmd_vel", 1)
         self.snuff_pub = self.create_publisher(Bool, "snuff", 1)
@@ -81,7 +83,7 @@ class AiNode(Node):
 
             if self.home is None:
                 self.get_logger().info(f"Looking for home", throttle_duration_sec=5.0)
-                if self.confidence > 0.99:
+                if self.confidence > 0.90:
                     for i, room in enumerate(rooms):
                         b = np.array(room["bounds"]) / 100.0
                         xmin, xmax, ymin, ymax = b
@@ -98,22 +100,28 @@ class AiNode(Node):
                             break
 
             if self.dijkstras is None and self.room_plan is not None:
-                if len(self.room_plan):
-                    room_i = self.room_plan[0]
-                    self.get_logger().info(f"Going to room: {room_i}")
-                    self.room_plan = self.room_plan[1:]
-                    b = np.array(rooms[room_i]["bounds"]) / 100.0
-                    self.goal = np.array([(b[0] + b[1]) / 2, (b[2] + b[3]) / 2])
-                    self.dijkstras = firebot_common.dijkstras.dijkstras_search(self.distmap, self.goal[0], self.goal[1]) + 0.3 * np.clip(1.0 - self.distmap / (BODY_RADIUS*2), 0.0, 1.0)
+                if self.candle_snuffed:
+                        room_i = self.home
+                        self.get_logger().info(f"-> Going home: {room_i}")
                 else:
-                    self.get_logger().info("No rooms left to explore!")
+                    if len(self.room_plan):
+                        room_i = self.room_plan[0]
+                        self.get_logger().info(f"-> Going to room: {room_i}")
+                        self.room_plan = self.room_plan[1:]
+                    else:
+                        self.get_logger().info("No rooms left to explore!")
+                        while True:
+                            sleep(1.0)
+                b = np.array(rooms[room_i]["bounds"]) / 100.0
+                self.goal = np.array([(b[0] + b[1]) / 2, (b[2] + b[3]) / 2])
+                self.dijkstras = firebot_common.dijkstras.dijkstras_search(self.distmap, self.goal[0], self.goal[1]) + 0.3 * np.clip(1.0 - self.distmap / (BODY_RADIUS*2), 0.0, 1.0)
 
             # Heat sensor
             alphas = np.linspace(HEAT_FOV/2, -HEAT_FOV/2, 8)
-            if np.max(self.heat) > 50.0:
+            if np.max(self.heat) > 40.0:
                 alpha = np.average(alphas, weights=self.heat)
                 msg = Twist()
-                msg.angular.z = signed_limit(dt * 100.0 * alpha, MAX_ANGULAR)
+                msg.angular.z = signed_limit(dt * 30.0 * alpha, MAX_ANGULAR / 2)
                 if alpha < 5.0 * pi / 180:
                     msg.linear.x = signed_limit(0.1 * (self.hits[0] - SNUFF_DIST), 0.05)
                 self.cmd_vel_pub.publish(msg)
@@ -128,20 +136,33 @@ class AiNode(Node):
                     ts = time()
                     while time() - ts < 3.0:
                         self.cmd_vel_pub.publish(msg)
+                        rclpy.spin_once(self, timeout_sec=0.01)
                     self.cmd_vel_pub.publish(Twist())
+                    self.get_logger().info(f"heat: {np.max(self.heat):.3f}")
+                    if np.max(self.heat) < 40.0:
+                        self.get_logger().info("Candle got snuffed!")
+                        self.candle_snuffed = True
+                        self.dijkstras = None
+                        continue
 
             else:
 
-                if self.dijkstras is not None and self.confidence > 0.8:
+                if self.dijkstras is not None and self.confidence > 0.7:
                     self.localizing_ts = None
 
                     if np.linalg.norm(self.goal - self.pos) < 0.1:
-                        self.look_for_candle = True
-                    
-                    if self.look_for_candle:
+                        self.candle_look_ts = time()
+
+                    if self.candle_look_ts is not None and time() - self.candle_look_ts > MAX_ANGULAR / (2.0 * pi):
+                        self.get_logger().info("Done looking for candle")
+                        self.candle_look_ts = None
+                        self.dijkstras = None
+                        continue
+
+                    if self.candle_look_ts is not None:
                         self.get_logger().info("Look for candle", throttle_duration_sec=3.0)
                         msg = Twist()
-                        msg.angular.z = 0.3
+                        msg.angular.z = MAX_ANGULAR
                         self.cmd_vel_pub.publish(msg)
                     else:
                         msg = Twist()
@@ -152,40 +173,14 @@ class AiNode(Node):
                         elif self.hits[-1] < 0.05:
                             msg.angular.z = 0.4
                         else:
-                            # pt = self.pos.copy()
-                            # steplen = sqrt(2)*SEARCH_CELL_SIZE
-                            # for _ in range(2):
-                            #     flowdir = firebot_common.dijkstras.flow(self.dijkstras, *pt)
-                            #     pt += steplen * flowdir
-                            # carrot_pose = Pose()
-                            # carrot_pose.position.x = pt[0]
-                            # carrot_pose.position.y = pt[1]
-                            # self.carrot_pub.publish(carrot_pose)
-                            # carrot_dir = (pt - self.pos)
-                            # carrot_dir /= np.linalg.norm(carrot_dir)
                             carrot_dir = firebot_common.dijkstras.flow(self.dijkstras, *self.pos)
                             robot_dir = np.array([cos(self.angle), sin(self.angle)])
                             alpha = angle_between(carrot_dir, robot_dir)
                             msg.angular.z = signed_limit(dt * 10.0 * alpha, MAX_ANGULAR)
-                            #self.get_logger().info(f"{abs(msg.angular.z):.3f} {(MAX_ANGULAR / 2 - abs(msg.angular.z)):.3f} {np.clip((MAX_ANGULAR - abs(msg.angular.z)) / (MAX_ANGULAR), 0, 1):.3f}")
-                            msg.linear.x = MAX_LINEAR * np.clip((MAX_ANGULAR/6 - abs(msg.angular.z)) / (MAX_ANGULAR/6), 0.1, 1)
+                            msg.linear.x = MAX_LINEAR * np.clip((MAX_ANGULAR/6 - abs(msg.angular.z)) / (MAX_ANGULAR/6), 0.3, 1)
                         self.cmd_vel_pub.publish(msg)
                 else:
-                    self.get_logger().info("Localizing", throttle_duration_sec=3.0)
-                    # if self.localizing_ts is None:
-                    #     self.localizing_ts = time()
-                    # seqi = int(self.localizing_ts / 3.0) % 4
-                    # self.get_logger().info(f"{seqi:d}")
-                    # msg = Twist()
-                    # if seqi in [0]:
-                    #     pass
-                    # elif seqi in [1]:
-                    #     msg.linear.x = -0.03
-                    # elif seqi in [2]:
-                    #     msg.angular.z = -0.05
-                    # elif seqi in [3]:
-                    #     msg.angular.z = 0.05
-                    # self.cmd_vel_pub.publish(msg)
+                    self.get_logger().info(f"Localizing {self.confidence:.2f}", throttle_duration_sec=3.0)
         
 
 def main(args=None):
