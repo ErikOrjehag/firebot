@@ -7,11 +7,11 @@ from firebot_common.calc_hits import angle_between
 from firebot_common.mapp import Map
 import numpy as np
 from time import time
-from firebot_common.constants import MAP_SIZE, BODY_RADIUS, HEAT_FOV
+from firebot_common.constants import MAP_SIZE, BODY_RADIUS, HEAT_FOV, SEARCH_CELL_SIZE
 import rclpy.qos
 import firebot_common.wall_collision
 import firebot_common.dijkstras
-from math import cos, sin
+from math import cos, sin, pi, sqrt
 from firebot_common.data import rooms
 
 def signed_limit(value, limit) -> float:
@@ -33,12 +33,16 @@ class AiNode(Node):
         self.home = None
         self.room_plan = None
         self.goal = None
+        self.localizing_ts = None
         self.map = Map()
         self.distmap = firebot_common.wall_collision.generate_distance_map(self.map)
         self.dijkstras = None
 
+        self.look_for_candle = False
+
         self.cmd_vel_pub = self.create_publisher(Twist, "cmd_vel", 1)
         self.snuff_pub = self.create_publisher(Bool, "snuff", 1)
+        self.carrot_pub = self.create_publisher(Pose, "carrot", 1)
 
         self.create_subscription(Float64MultiArray, "hits", self.hits_callback, rclpy.qos.qos_profile_sensor_data)
         self.create_subscription(Float64MultiArray, "heat", self.heat_callback, rclpy.qos.qos_profile_sensor_data)
@@ -61,6 +65,8 @@ class AiNode(Node):
     def run(self):
         
         SNUFF_DIST = 0.03
+        MAX_ANGULAR = 0.3
+        MAX_LINEAR = 0.05
         ts = time()
 
         while rclpy.ok():
@@ -107,14 +113,15 @@ class AiNode(Node):
             if np.max(self.heat) > 50.0:
                 alpha = np.average(alphas, weights=self.heat)
                 msg = Twist()
-                msg.angular.z = signed_limit(dt * 20.0 * alpha, 0.1)
-                msg.linear.x = signed_limit(0.1 * (self.hits[0] - SNUFF_DIST), 0.05)
+                msg.angular.z = signed_limit(dt * 100.0 * alpha, MAX_ANGULAR)
+                if alpha < 5.0 * pi / 180:
+                    msg.linear.x = signed_limit(0.1 * (self.hits[0] - SNUFF_DIST), 0.05)
                 self.cmd_vel_pub.publish(msg)
 
                 if abs(self.hits[0] - SNUFF_DIST) < 0.01:
                     self.get_logger().info("SNUFF!")
                     self.snuff_pub.publish(Bool(data=True))
-                    safe_sleep(self, 3.0)
+                    safe_sleep(self, 4.0)
                     self.snuff_pub.publish(Bool(data=False))
                     msg = Twist()
                     msg.linear.x = -0.05
@@ -126,16 +133,59 @@ class AiNode(Node):
             else:
 
                 if self.dijkstras is not None and self.confidence > 0.8:
-                    dir = firebot_common.dijkstras.flow(self.dijkstras, *(self.pos + 0.0 * np.array([cos(self.angle), sin(self.angle)])))
-                    msg = Twist()
-                    robot_dir = np.array([cos(self.angle), sin(self.angle)])
-                    alpha = angle_between(dir, robot_dir)
-                    msg.angular.z = signed_limit(dt * 10.0 * alpha, 0.1)
-                    if abs(msg.angular.z) < 0.05:
-                        msg.linear.x = 0.03
-                    self.cmd_vel_pub.publish(msg)
+                    self.localizing_ts = None
+
+                    if np.linalg.norm(self.goal - self.pos) < 0.1:
+                        self.look_for_candle = True
+                    
+                    if self.look_for_candle:
+                        self.get_logger().info("Look for candle", throttle_duration_sec=3.0)
+                        msg = Twist()
+                        msg.angular.z = 0.3
+                        self.cmd_vel_pub.publish(msg)
+                    else:
+                        msg = Twist()
+                        if self.hits[0] < 0.15:
+                            msg.linear.x = -0.05
+                        elif self.hits[1] < 0.05:
+                            msg.angular.z = -0.4
+                        elif self.hits[-1] < 0.05:
+                            msg.angular.z = 0.4
+                        else:
+                            # pt = self.pos.copy()
+                            # steplen = sqrt(2)*SEARCH_CELL_SIZE
+                            # for _ in range(2):
+                            #     flowdir = firebot_common.dijkstras.flow(self.dijkstras, *pt)
+                            #     pt += steplen * flowdir
+                            # carrot_pose = Pose()
+                            # carrot_pose.position.x = pt[0]
+                            # carrot_pose.position.y = pt[1]
+                            # self.carrot_pub.publish(carrot_pose)
+                            # carrot_dir = (pt - self.pos)
+                            # carrot_dir /= np.linalg.norm(carrot_dir)
+                            carrot_dir = firebot_common.dijkstras.flow(self.dijkstras, *self.pos)
+                            robot_dir = np.array([cos(self.angle), sin(self.angle)])
+                            alpha = angle_between(carrot_dir, robot_dir)
+                            msg.angular.z = signed_limit(dt * 10.0 * alpha, MAX_ANGULAR)
+                            #self.get_logger().info(f"{abs(msg.angular.z):.3f} {(MAX_ANGULAR / 2 - abs(msg.angular.z)):.3f} {np.clip((MAX_ANGULAR - abs(msg.angular.z)) / (MAX_ANGULAR), 0, 1):.3f}")
+                            msg.linear.x = MAX_LINEAR * np.clip((MAX_ANGULAR/6 - abs(msg.angular.z)) / (MAX_ANGULAR/6), 0.1, 1)
+                        self.cmd_vel_pub.publish(msg)
                 else:
-                    pass
+                    self.get_logger().info("Localizing", throttle_duration_sec=3.0)
+                    # if self.localizing_ts is None:
+                    #     self.localizing_ts = time()
+                    # seqi = int(self.localizing_ts / 3.0) % 4
+                    # self.get_logger().info(f"{seqi:d}")
+                    # msg = Twist()
+                    # if seqi in [0]:
+                    #     pass
+                    # elif seqi in [1]:
+                    #     msg.linear.x = -0.03
+                    # elif seqi in [2]:
+                    #     msg.angular.z = -0.05
+                    # elif seqi in [3]:
+                    #     msg.angular.z = 0.05
+                    # self.cmd_vel_pub.publish(msg)
         
 
 def main(args=None):

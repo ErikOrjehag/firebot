@@ -22,11 +22,10 @@ class AiNode(Node):
         self.robot = Robot()
         self.map = Map()
         initial_guess = []
-        for room in rooms:
+        counts = (12, 10, 12, 16)
+        for room, count in zip(rooms, counts):
             b = np.array(room["bounds"]) / 100.0
-            initial_guess.append([12, b[0] + BODY_RADIUS, b[1] - BODY_RADIUS, b[2] + BODY_RADIUS, b[3] - BODY_RADIUS])
-        initial_guess[0][0] += 1
-        initial_guess[1][0] += 1
+            initial_guess.append([count, b[0] + BODY_RADIUS, b[1] - BODY_RADIUS, b[2] + BODY_RADIUS, b[3] - BODY_RADIUS])
         self.pf = ParticleFilter(initial_guess)
         #([
             #(50, BODY_RADIUS, MAP_SIZE-BODY_RADIUS, BODY_RADIUS, MAP_SIZE-BODY_RADIUS),
