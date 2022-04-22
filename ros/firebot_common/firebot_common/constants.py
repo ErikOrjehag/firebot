@@ -1,6 +1,7 @@
 
 import numpy as np
 import firebot_common.data
+from math import pi
 
 MAP_SIZE = np.max(firebot_common.data.vertices) / 100.0 # 0.995  # 2.42
 
@@ -15,6 +16,7 @@ DIST_CELL_SIZE: float = SEARCH_CELL_SIZE / DIST_SUBSAMP
 
 # Robot
 BODY_RADIUS = 0.18 / 2
+HEAT_FOV = 41. * pi / 180.
 
 def pos_to_search_cell(x: float, y: float):
     return int(y / SEARCH_CELL_SIZE), int(x / SEARCH_CELL_SIZE)

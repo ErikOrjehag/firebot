@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'ai_node = firebot_ai.ai_node:main'
+            'ai_node = firebot_ai.ai_node:main',
+            'loc_node = firebot_ai.loc_node:main'
         ],
     },
 )

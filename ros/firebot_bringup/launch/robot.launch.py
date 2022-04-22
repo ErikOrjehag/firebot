@@ -30,6 +30,12 @@ def generate_launch_description():
             # ),
             Node(
                 package="firebot_ai",
+                executable="loc_node",
+                name="loc_node",
+                output="screen",
+            ),
+            Node(
+                package="firebot_ai",
                 executable="ai_node",
                 name="ai_node",
                 output="screen",
