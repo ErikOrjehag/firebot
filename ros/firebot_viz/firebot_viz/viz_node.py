@@ -12,6 +12,7 @@ from firebot_common.renderer import Renderer
 from firebot_common.mapp import Map
 from firebot_common.montecarlo import ParticleFilter
 from firebot_common.constants import MAP_SIZE, BODY_RADIUS
+import rclpy.qos
 
 class VizNode(Node):
 
@@ -27,10 +28,10 @@ class VizNode(Node):
         self.renderer.set_map(self.map)
         self.renderer.set_robot(self.robot)
         self.renderer.set_pf(self.pf)
-        self.pose_sub = self.create_subscription(Pose, 'pose', self.pose_callback, 0)
-        self.hits_sub = self.create_subscription(Float64MultiArray, 'hits', self.hits_callback, 0)
-        self.pf_sub = self.create_subscription(PoseArray, 'pf', self.pf_callback, 0)
-        self.heat_sub = self.create_subscription(Float64MultiArray, 'heat', self.heat_callback, 0)
+        self.pose_sub = self.create_subscription(Pose, 'pose', self.pose_callback, 1)
+        self.pf_sub = self.create_subscription(PoseArray, 'pf', self.pf_callback, 1)
+        self.hits_sub = self.create_subscription(Float64MultiArray, 'hits', self.hits_callback, rclpy.qos.qos_profile_sensor_data)
+        self.heat_sub = self.create_subscription(Float64MultiArray, 'heat', self.heat_callback, rclpy.qos.qos_profile_sensor_data)
 
     def heat_callback(self, msg):
         self.renderer.set_heat(msg.data)

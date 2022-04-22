@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y \
     libglu1-mesa-dev \
     python3-tk \
     mesa-utils \
+    ros-foxy-teleop-twist-keyboard \
     && rm -rf /var/lib/apt/lists/*
 RUN usermod -a -G video root
 

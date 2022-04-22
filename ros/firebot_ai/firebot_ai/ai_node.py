@@ -39,7 +39,7 @@ class AiNode(Node):
         self.pf_pub = self.create_publisher(PoseArray, "pf", 5)
         self.cmd_vel_pub = self.create_publisher(Twist, "cmd_vel", 5)
         self.snuff_pub = self.create_publisher(Bool, "snuff", 5)
-        self.dt = 0.1
+        self.dt = 0.02
         self.timer = self.create_timer(self.dt, self.timer_callback)
 
     def heat_callback(self, msg: Float64MultiArray):
@@ -62,7 +62,7 @@ class AiNode(Node):
     def timer_callback(self):
         # Localization
         t1 = time()
-        for _ in range(5):
+        for _ in range(1):
             self.pf.update(
                 self.linear,
                 self.angular,

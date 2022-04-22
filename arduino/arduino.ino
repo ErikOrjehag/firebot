@@ -77,12 +77,15 @@ void loop() {
   for (int i = 0; i < N_SENSORS; i++) {
     while (!sensors[i].checkForDataReady())
     {
-      delay(1);
+      for (int i = 0; i < 10; i++) __asm__("nop\n\t");
     }
     int distance = sensors[i].getDistance();
     send_buf[1+i*2+0] = distance >> 8;
     send_buf[1+i*2+1] = distance & 0xFF;
+    //Serial.print(distance);
+    //Serial.print(" ");
   }
+  //Serial.println();
   
   int ambient = tpa.getAll(temps);
   for (int i = 0; i < N_TEMPS; i++) {
@@ -124,7 +127,8 @@ void loop() {
     set_motor_speed(1, 0);
   }
 
-  delay(200);
+  Serial.flush();
+  delay(100);
 }
 
 void set_motor_speed(int motor, int speed) {

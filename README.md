@@ -84,8 +84,9 @@ exec "$SHELL"
 pip3 install colcon-common-extensions
 ```
 
-## Mouse teleop
+## Teleop
 
 ```
 ros2 run mouse_teleop mouse_teleop --ros-args --remap /mouse_vel:=/cmd_vel
+ros2 run teleop_twist_keyboard teleop_twist_keyboard
 ```
