@@ -32,6 +32,7 @@ class VizNode(Node):
         self.pf_sub = self.create_subscription(PoseArray, 'pf', self.pf_callback, 1)
         self.hits_sub = self.create_subscription(Float64MultiArray, 'hits', self.hits_callback, rclpy.qos.qos_profile_sensor_data)
         self.heat_sub = self.create_subscription(Float64MultiArray, 'heat', self.heat_callback, rclpy.qos.qos_profile_sensor_data)
+        self.carrot_sub = self.create_subscription(Pose, 'carrot', self.carrot_callback, 1)
 
     def heat_callback(self, msg):
         self.renderer.set_heat(msg.data)
@@ -40,6 +41,9 @@ class VizNode(Node):
         self.robot.x = msg.position.x
         self.robot.y = msg.position.y
         self.robot.angle = msg.orientation.z
+
+    def carrot_callback(self, msg: Pose):
+        self.renderer.set_fire(np.array([msg.position.x, msg.position.y]))
 
     def hits_callback(self, msg):
         self.robot.hits = np.array(msg.data)

@@ -67,12 +67,13 @@ class Renderer:
 
     def set_fire(self, fire):
         self.fire = fire
-        circle = 0.03*np.vstack([[cos(phi), sin(phi)] for phi in np.linspace(0., 2.*pi, 20)])
-        g1 = pyglet.graphics.Group()
-        self.fire_b = pyglet.graphics.Batch()
-        self.fire_b.add(len(circle), pyglet.gl.GL_LINE_STRIP, g1,
-            ('v2f', circle.flatten()),
-            ('c3B', (255,150,0)*len(circle)))
+        if self.fire_b is None:
+            circle = 0.03*np.vstack([[cos(phi), sin(phi)] for phi in np.linspace(0., 2.*pi, 20)])
+            g1 = pyglet.graphics.Group()
+            self.fire_b = pyglet.graphics.Batch()
+            self.fire_b.add(len(circle), pyglet.gl.GL_LINE_STRIP, g1,
+                ('v2f', circle.flatten()),
+                ('c3B', (255,150,0)*len(circle)))
 
     def set_heat(self, heat):
         if self.heat_b is None:
