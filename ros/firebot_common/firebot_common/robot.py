@@ -13,7 +13,11 @@ class Robot():
 
         self.sensor_offsets = np.array( [0.0091]+[0.1013]*(self.N_sensors-1) )
         #self.sensor_dirs = np.vstack([[cos(phi), sin(phi)] for phi in np.linspace(0, 2*pi, self.N_sensors, endpoint=False)+pi/4])
-        self.sensor_dirs = np.vstack([[cos(phi), sin(phi)] for phi in np.linspace(0, 2*pi, self.N_sensors, endpoint=False)])
+        self.sensor_dirs = np.vstack([[cos(phi), sin(phi)] for phi in np.linspace(0, 2*pi, self.N_sensors+2, endpoint=False)])
+        pick = [True] * 10
+        pick[1] = False
+        pick[-1] = False
+        self.sensor_dirs = self.sensor_dirs[pick]
 
         self.hits = np.ones(self.N_sensors) * 0.1
 

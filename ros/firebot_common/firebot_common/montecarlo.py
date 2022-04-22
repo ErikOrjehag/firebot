@@ -5,6 +5,7 @@ from firebot_common.calc_hits import calc_hits
 from firebot_common.constants import MAP_SIZE, BODY_RADIUS
 
 def normalize_weights(w):
+    w += 0.01
     N = len(w)
     wsum = np.sum(w)
     if wsum > 0.0:
@@ -53,8 +54,8 @@ class ParticleFilter():
 
             # Resample
             inds_sort = np.argsort(self.w)
-            n1 = int(self.N*0.4)
-            n2 = int(self.N*0.1)
+            n1 = int(self.N*0.3)
+            n2 = int(self.N*0.3)
             inds_redo = inds_sort[:n1]      # Resample uniformly
             inds_bad = inds_sort[n1:n1+n2]  # Resample normal gauss around good
             inds_good = inds_sort[n1+n2:]   # Keep as is
@@ -72,8 +73,8 @@ class ParticleFilter():
             for i in range(N_bad):
                 good_i = inds_good[inds_bin[i]-1]
                 bad_i = inds_bad[i]
-                self.pos[bad_i] = self.pos[good_i]+0.03*np.random.randn(2)
-                self.angle[bad_i] = self.angle[good_i]+pi/15.*np.random.randn(1)
+                self.pos[bad_i] = self.pos[good_i]+0.1*np.random.randn(2)
+                self.angle[bad_i] = self.angle[good_i]+40.*pi/180.*np.random.randn(1)
             
             # Redo
             posx = np.random.uniform(BODY_RADIUS, MAP_SIZE - BODY_RADIUS, size=(N_redo,1))
