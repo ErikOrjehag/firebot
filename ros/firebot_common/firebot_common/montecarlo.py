@@ -19,7 +19,7 @@ class ParticleFilter():
     def __init__(self, initialAreas):
         self.N = 0
 
-        self.noise = 0.02
+        self.noise = 0.05
 
         self.pos = np.empty((0, 2))
 
@@ -69,7 +69,7 @@ class ParticleFilter():
 
             w_good = self.w[inds_good]
 
-            self.confidence = w_good.sum()
+            self.confidence += 0.1 * (w_good.sum() - self.confidence)
 
             w_good_norm = normalize_weights(w_good)
 

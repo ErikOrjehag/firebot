@@ -45,6 +45,7 @@ def run_loop(node, executor):
     arduino.reset_output_buffer()
     node.get_logger().info("ready!")
     def cmd_vel_cb(msg: geometry_msgs.msg.Twist):
+        # node.get_logger().info(f"{msg.linear.x:.2f}")
         s0 = robot_vel_to_wheel_vel(msg.linear.x, -msg.angular.z, False)
         s1 = robot_vel_to_wheel_vel(msg.linear.x, -msg.angular.z, True)
         s = [s0, s1]
@@ -87,7 +88,7 @@ def run_loop(node, executor):
                     hits_pub.publish(std_msgs.msg.Float64MultiArray(data=sensors))
                     heat_pub.publish(std_msgs.msg.Float64MultiArray(data=temps))
                     arduino.reset_input_buffer()
-                executor.spin_once(timeout_sec=0.0)
+            executor.spin_once(timeout_sec=0.0)
     except KeyboardInterrupt:
         pass
 
