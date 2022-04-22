@@ -40,6 +40,8 @@ class ParticleFilter():
         self.kf_pos = None
         self.kf_angle = None
 
+        self.confidence = 0.0
+
     def update(self, linear, angular, robot, walls):
         
         if True or np.linalg.norm(linear) > 1e-9 or fabs(angular) > 1e-9:
@@ -54,8 +56,9 @@ class ParticleFilter():
 
             # Resample
             inds_sort = np.argsort(self.w)
-            n1 = int(self.N*0.3)
-            n2 = int(self.N*0.3)
+            uni = (1.0 - self.confidence)
+            n1 = int(self.N*0.6*uni)
+            n2 = int(self.N*0.6*(1-uni))
             inds_redo = inds_sort[:n1]      # Resample uniformly
             inds_bad = inds_sort[n1:n1+n2]  # Resample normal gauss around good
             inds_good = inds_sort[n1+n2:]   # Keep as is
@@ -64,17 +67,21 @@ class ParticleFilter():
             N_bad = len(inds_bad)
             N_good = len(inds_good)
 
-            w_good = normalize_weights(self.w[inds_good])
+            w_good = self.w[inds_good]
 
-            bins = np.cumsum(np.concatenate((np.zeros(1), w_good)))
+            self.confidence = w_good.sum()
+
+            w_good_norm = normalize_weights(w_good)
+
+            bins = np.cumsum(np.concatenate((np.zeros(1), w_good_norm)))
             rands = np.random.uniform(0.0, 0.999, N_bad)
             inds_bin = np.digitize(rands, bins)
 
             for i in range(N_bad):
                 good_i = inds_good[inds_bin[i]-1]
                 bad_i = inds_bad[i]
-                self.pos[bad_i] = self.pos[good_i]+0.1*np.random.randn(2)
-                self.angle[bad_i] = self.angle[good_i]+40.*pi/180.*np.random.randn(1)
+                self.pos[bad_i] = self.pos[good_i]+0.05*np.random.randn(2)
+                self.angle[bad_i] = self.angle[good_i]+20.*pi/180.*np.random.randn(1)
             
             # Redo
             posx = np.random.uniform(BODY_RADIUS, MAP_SIZE - BODY_RADIUS, size=(N_redo,1))

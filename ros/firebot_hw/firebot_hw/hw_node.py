@@ -8,6 +8,7 @@ import collections
 import time
 import geometry_msgs.msg
 import math
+import rclpy.qos
 
 WHEEL_BASELINE = 0.17
 WHEEL_RADIUS = 0.1 / 2
@@ -38,8 +39,10 @@ def checksum(bts, chs):
     return checksum == chs
 
 def run_loop(node, executor):
-    arduino = serial.Serial('/dev/ttyUSB0', 2000000, timeout=0.005)
-    time.sleep(3)
+    arduino = serial.Serial('/dev/ttyUSB0', 2000000, timeout=0.0001)
+    time.sleep(1)
+    arduino.reset_input_buffer()
+    arduino.reset_output_buffer()
     node.get_logger().info("ready!")
     def cmd_vel_cb(msg: geometry_msgs.msg.Twist):
         s0 = robot_vel_to_wheel_vel(msg.linear.x, -msg.angular.z, False)
@@ -50,6 +53,7 @@ def run_loop(node, executor):
         s0l = s[0] & 0xFF
         s1h = (s[1] >> 8) & 0xFF
         s1l = s[1] & 0xFF
+        # arduino.reset_output_buffer()
         arduino.write(bytearray([
             int.from_bytes(START, 'little'),
             s0h,
@@ -60,9 +64,9 @@ def run_loop(node, executor):
             int.from_bytes(STOP, 'little')
         ]))
 
-    hits_pub = node.create_publisher(std_msgs.msg.Float64MultiArray, "/hits", 10)
-    heat_pub = node.create_publisher(std_msgs.msg.Float64MultiArray, "/heat", 10)
-    node.create_subscription(geometry_msgs.msg.Twist, "/cmd_vel", cmd_vel_cb, 10)
+    hits_pub = node.create_publisher(std_msgs.msg.Float64MultiArray, "/hits", rclpy.qos.qos_profile_sensor_data)
+    heat_pub = node.create_publisher(std_msgs.msg.Float64MultiArray, "/heat", rclpy.qos.qos_profile_sensor_data)
+    node.create_subscription(geometry_msgs.msg.Twist, "/cmd_vel", cmd_vel_cb, 1)
     rec_buf = collections.deque([0]*REC_BUF_SIZE, maxlen=REC_BUF_SIZE)
     try:
         n = 0
@@ -82,7 +86,8 @@ def run_loop(node, executor):
                         ts = time.time()
                     hits_pub.publish(std_msgs.msg.Float64MultiArray(data=sensors))
                     heat_pub.publish(std_msgs.msg.Float64MultiArray(data=temps))
-                executor.spin_once(timeout_sec=0.0001)
+                    arduino.reset_input_buffer()
+                executor.spin_once(timeout_sec=0.0)
     except KeyboardInterrupt:
         pass
 
