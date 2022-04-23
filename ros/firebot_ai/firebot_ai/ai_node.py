@@ -14,6 +14,7 @@ import firebot_common.dijkstras
 from math import cos, sin, pi, sqrt
 from firebot_common.data import rooms
 from collections import deque
+from firebot_common.kartor import kartor
 
 def signed_limit(value, limit) -> float:
     return np.sign(value) * min(abs(value), limit)
@@ -32,6 +33,7 @@ class AiNode(Node):
         self.angle = None
         self.confidence = 0.0
         self.home = None
+        self.from_room = None
         self.room_plan = None
         self.goal = None
         self.localizing_ts = None
@@ -78,8 +80,9 @@ class AiNode(Node):
         MAX_LINEAR = 0.08 * 2.0
         ts = time()
 
-        # self.dijkstras = firebot_common.dijkstras.dijkstras_search(self.distmap, 2.0, 2.05) + 3.0 * np.clip(1.0 - self.distmap / (BODY_RADIUS*2), 0.0, 1.0)
+        # self.dijkstras = np.array(kartor["1_till_0"]).T[::-1,::-1]
         # self.dijkstras_pub.publish(Float64MultiArray(data=list(self.dijkstras.flatten())))
+        # exit()
 
         while rclpy.ok():
             rclpy.spin_once(self, timeout_sec=0.01)
@@ -100,6 +103,7 @@ class AiNode(Node):
                         x, y = self.pos
                         if xmin <= x <= xmax and ymin <= y <= ymax:
                             self.home = i
+                            self.from_room = i
                             self.room_plan = [
                                 [1, 3, 2],
                                 [0, 3, 2],
@@ -124,8 +128,11 @@ class AiNode(Node):
                             sleep(1.0)
                 b = np.array(rooms[room_i]["bounds"]) / 100.0
                 self.goal = np.array([(b[0] + b[1]) / 2, (b[2] + b[3]) / 2])
-                self.dijkstras = firebot_common.dijkstras.dijkstras_search(self.distmap, self.goal[0], self.goal[1]) + 3.0 * np.clip(1.0 - self.distmap / (BODY_RADIUS*2), 0.0, 1.0)
+                # self.dijkstras = firebot_common.dijkstras.dijkstras_search(self.distmap, self.goal[0], self.goal[1]) + np.array(kartor[f"{self.from_room:d}_till_{room_i:d}"]).T[::-1,::-1]
+                self.dijkstras = firebot_common.dijkstras.dijkstras_search(self.distmap, self.goal[0], self.goal[1]) + 1.0 * np.clip(1.0 - self.distmap / (BODY_RADIUS*2), 0.0, 1.0) + np.array(kartor[f"{self.from_room:d}_till_{room_i:d}"]).T[::-1,::-1]
+                # self.dijkstras = np.array(kartor[f"{self.from_room:d}_till_{room_i:d}"]).T[::-1,::-1]
                 self.dijkstras_pub.publish(Float64MultiArray(data=list(self.dijkstras.flatten())))
+                self.from_room = room_i
 
             # Heat sensor
             FLAME_HEAT = 60.0
@@ -204,7 +211,11 @@ class AiNode(Node):
                         self.cmd_vel_pub.publish(msg)
                 else:
                     self.get_logger().info(f"Localizing {self.confidence:.2f}", throttle_duration_sec=3.0)
-        
+                    msg = Twist()
+                    if int(time()) % 2 == 0:
+                        msg.angular.z = 0.1
+                    self.cmd_vel_pub.publish(msg)
+
 
 def main(args=None):
     rclpy.init(args=args)
