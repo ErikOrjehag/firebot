@@ -11,7 +11,7 @@ from firebot_common.robot import Robot
 from firebot_common.renderer import Renderer
 from firebot_common.mapp import Map
 from firebot_common.montecarlo import ParticleFilter
-from firebot_common.constants import MAP_SIZE, BODY_RADIUS
+from firebot_common.constants import MAP_SIZE, BODY_RADIUS, N_SEARCH_CELLS
 import rclpy.qos
 
 class VizNode(Node):
@@ -22,17 +22,20 @@ class VizNode(Node):
         self.robot = Robot()
         self.pf = ParticleFilter([
             (50, BODY_RADIUS, MAP_SIZE-BODY_RADIUS, BODY_RADIUS, MAP_SIZE-BODY_RADIUS),
-            #(50, 0.1, 0.8, 0.1, 1.1),
         ])
         self.renderer = Renderer("Vizualisation")
         self.renderer.set_map(self.map)
         self.renderer.set_robot(self.robot)
         self.renderer.set_pf(self.pf)
-        self.pose_sub = self.create_subscription(Pose, 'pose', self.pose_callback, 1)
-        self.pf_sub = self.create_subscription(PoseArray, 'pf', self.pf_callback, 1)
-        self.hits_sub = self.create_subscription(Float64MultiArray, 'hits', self.hits_callback, rclpy.qos.qos_profile_sensor_data)
-        self.heat_sub = self.create_subscription(Float64MultiArray, 'heat', self.heat_callback, rclpy.qos.qos_profile_sensor_data)
-        self.carrot_sub = self.create_subscription(Pose, 'carrot', self.carrot_callback, 1)
+        self.create_subscription(Pose, 'pose', self.pose_callback, 1)
+        self.create_subscription(PoseArray, 'pf', self.pf_callback, 1)
+        self.create_subscription(Float64MultiArray, 'hits', self.hits_callback, rclpy.qos.qos_profile_sensor_data)
+        self.create_subscription(Float64MultiArray, 'heat', self.heat_callback, rclpy.qos.qos_profile_sensor_data)
+        self.create_subscription(Pose, 'carrot', self.carrot_callback, 1)
+        self.create_subscription(Float64MultiArray, 'dijkstras', self.dijkstras_callback, 1)
+
+    def dijkstras_callback(self, msg):
+        self.renderer.set_dijkstras(np.array(msg.data).reshape((N_SEARCH_CELLS, N_SEARCH_CELLS)))
 
     def heat_callback(self, msg):
         self.renderer.set_heat(msg.data)

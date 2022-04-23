@@ -72,6 +72,8 @@ def generate_distance_map(mapp):
     return distances
 
 def to_image(distances, maximum=None):
+    from pyglet.gl import GLubyte
+    import pyglet.image
     n = distances.shape[0]
     fmt = 'RGBA'
     data = np.zeros((n, n, 4), np.float64)
