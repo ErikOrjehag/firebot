@@ -44,8 +44,9 @@ class AiNode(Node):
         self.look_for_candle = False
         self.candle_look_ts = None
         self.candle_snuffed = False
+        self.going_home = False
 
-        self.heat_buf = deque([0.0] * 10, maxlen=10)
+        self.heat_buf = deque([0.0] * 12, maxlen=12)
 
         self.cmd_vel_pub = self.create_publisher(Twist, "cmd_vel", 1)
         self.snuff_pub = self.create_publisher(Bool, "snuff", 1)
@@ -53,12 +54,18 @@ class AiNode(Node):
         self.led_green_pub = self.create_publisher(Bool, "led/green", 1)
         self.led_red_pub = self.create_publisher(Bool, "led/red", 1)
         self.carrot_pub = self.create_publisher(Pose, "carrot", 1)
-        self.dijkstras_pub = self.create_publisher(Float64MultiArray, "dijkstras", 1)
+        self.dijkstras_pub = self.create_publisher(Float64MultiArray, "dijkstras", 5)
 
         self.create_subscription(Float64MultiArray, "hits", self.hits_callback, rclpy.qos.qos_profile_sensor_data)
         self.create_subscription(Float64MultiArray, "heat", self.heat_callback, rclpy.qos.qos_profile_sensor_data)
         self.create_subscription(Float64, "confidence", self.confidence_callback, 1)
         self.create_subscription(Pose, "pose", self.pose_callback, 1)
+
+        #self.create_timer(1.0, self.timer_callback)
+
+    # def timer_callback(self):
+    #     if self.dijkstras is not None:
+    #         self.dijkstras_pub.publish(Float64MultiArray(data=list(self.dijkstras.flatten())))
 
     def confidence_callback(self, msg: Float64):
         self.confidence = msg.data
@@ -85,6 +92,8 @@ class AiNode(Node):
         # self.dijkstras = firebot_common.dijkstras.dijkstras_search(self.distmap, g[0], g[1]) + 1.0 * np.clip(1.0 - self.distmap / (BODY_RADIUS*2), 0.0, 1.0) + np.array(kartor[f"{1}_till_{0}"]).T[::-1,::-1]
         # self.dijkstras_pub.publish(Float64MultiArray(data=list(self.dijkstras.flatten())))
         # exit()
+
+        self.buzz_pub.publish(Bool(data=False))
 
         while rclpy.ok():
             rclpy.spin_once(self, timeout_sec=0.01)
@@ -115,32 +124,37 @@ class AiNode(Node):
                             self.get_logger().info(f"Setting home: {i:d}, with plan: {self.room_plan}")
                             break
 
-            if self.dijkstras is None and self.room_plan is not None:
-                if self.candle_snuffed:
-                        room_i = self.home
-                        self.get_logger().info(f"-> Going home: {room_i}")
-                else:
-                    if len(self.room_plan):
-                        room_i = self.room_plan[0]
-                        self.get_logger().info(f"-> Going to room: {room_i}")
-                        self.room_plan = self.room_plan[1:]
+            if not self.going_home:
+                if self.dijkstras is None and self.room_plan is not None:
+                    
+                    if self.candle_snuffed:
+                            room_i = self.home
+                            self.get_logger().info(f"-> Going home: {room_i}")
+                            self.going_home = True
                     else:
-                        self.get_logger().info("No rooms left to explore!")
-                        while True:
-                            sleep(1.0)
-                b = np.array(rooms[room_i]["bounds"]) / 100.0
-                self.goal = np.array([(b[0] + b[1]) / 2, (b[2] + b[3]) / 2])
-                # self.dijkstras = firebot_common.dijkstras.dijkstras_search(self.distmap, self.goal[0], self.goal[1]) + np.array(kartor[f"{self.from_room:d}_till_{room_i:d}"]).T[::-1,::-1]
-                self.dijkstras = firebot_common.dijkstras.dijkstras_search(self.distmap, self.goal[0], self.goal[1]) + 1.0 * np.clip(1.0 - self.distmap / (BODY_RADIUS*2), 0.0, 1.0) + np.array(kartor[f"{self.from_room:d}_till_{room_i:d}"]).T[::-1,::-1]
-                # self.dijkstras = np.array(kartor[f"{self.from_room:d}_till_{room_i:d}"]).T[::-1,::-1]
-                self.dijkstras_pub.publish(Float64MultiArray(data=list(self.dijkstras.flatten())))
-                self.from_room = room_i
+                        if len(self.room_plan):
+                            room_i = self.room_plan[0]
+                            self.get_logger().info(f"-> Going to room: {room_i}")
+                            self.room_plan = self.room_plan[1:]
+                        else:
+                            self.get_logger().info("No rooms left to explore!")
+                            while True:
+                                sleep(1.0)
+                    b = np.array(rooms[room_i]["bounds"]) / 100.0
+                    self.goal = np.array([(b[0] + b[1]) / 2, (b[2] + b[3]) / 2])
+                    # self.dijkstras = firebot_common.dijkstras.dijkstras_search(self.distmap, self.goal[0], self.goal[1]) + np.array(kartor[f"{self.from_room:d}_till_{room_i:d}"]).T[::-1,::-1]
+                    self.dijkstras = firebot_common.dijkstras.dijkstras_search(self.distmap, self.goal[0], self.goal[1]) + 3.0 * np.clip(1.0 - self.distmap / (BODY_RADIUS*2), 0.0, 1.0) + np.array(kartor[f"{self.from_room:d}_till_{room_i:d}"]).T[::-1,::-1]
+                    # self.dijkstras = np.array(kartor[f"{self.from_room:d}_till_{room_i:d}"]).T[::-1,::-1]
+                    self.dijkstras_pub.publish(Float64MultiArray(data=list(self.dijkstras.flatten())))
+                    rclpy.spin_once(self, timeout_sec=0.01)
+                    self.from_room = room_i
+                    continue
 
             # Heat sensor
             FLAME_HEAT = 60.0
             alphas = np.linspace(HEAT_FOV/2, -HEAT_FOV/2, 8)
             self.heat_buf.append(np.max(self.heat))
-            if np.min(self.heat_buf) > FLAME_HEAT:
+            if not self.going_home and np.min(self.heat_buf) > FLAME_HEAT:
                 self.led_red_pub.publish(Bool(data=True))
                 self.get_logger().info("I saw a candle")
                 alpha = np.average(alphas, weights=self.heat)
@@ -171,7 +185,7 @@ class AiNode(Node):
 
             else:
 
-                if self.dijkstras is not None and self.confidence > 0.7:
+                if self.dijkstras is not None and self.confidence > 0.5:
                     self.localizing_ts = None
 
                     if np.linalg.norm(self.goal - self.pos) < 0.1:
@@ -188,7 +202,8 @@ class AiNode(Node):
                     if self.candle_look_ts is not None and time() - self.candle_look_ts > (2.0 * pi) / MAX_ANGULAR:
                         self.get_logger().info("Done looking for candle")
                         self.candle_look_ts = None
-                        self.dijkstras = None
+                        if not self.going_home:
+                            self.dijkstras = None
                         continue
 
                     if self.candle_look_ts is not None:
@@ -214,8 +229,14 @@ class AiNode(Node):
                 else:
                     self.get_logger().info(f"Localizing {self.confidence:.2f}", throttle_duration_sec=3.0)
                     msg = Twist()
-                    if int(time()) % 2 == 0:
-                        msg.angular.z = 0.1
+                    if self.hits[0] < 0.15:
+                        msg.linear.x = -0.05
+                    elif self.hits[1] < 0.06:
+                        msg.angular.z = -0.4
+                    elif self.hits[-1] < 0.06:
+                        msg.angular.z = 0.4
+                    elif int(time() / 2.0) % 3 == 0:
+                        msg.angular.z = 0.2
                     self.cmd_vel_pub.publish(msg)
 
 

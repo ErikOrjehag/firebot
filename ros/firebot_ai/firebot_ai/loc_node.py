@@ -34,7 +34,7 @@ class AiNode(Node):
         self.create_subscription(Float64MultiArray, "hits", self.hits_callback, rclpy.qos.qos_profile_sensor_data)
         self.create_subscription(Empty, "start", self.start_callback, 1)
         
-        self.create_subscription(Float64MultiArray, 'dijkstras', self.dijkstras_callback, 1)
+        self.create_subscription(Float64MultiArray, 'dijkstras', self.dijkstras_callback, 5)
 
         self.led_green_pub = self.create_publisher(Bool, "led/green", 1)
         self.led_yellow_pub = self.create_publisher(Bool, "led/yellow", 1)
@@ -47,6 +47,7 @@ class AiNode(Node):
         self.timer = self.create_timer(self.dt, self.timer_callback)
 
     def dijkstras_callback(self, msg):
+        self.get_logger().info("got dijkstas")
         self.pf.dijkstras = np.array(msg.data).reshape((N_SEARCH_CELLS, N_SEARCH_CELLS))
 
     def hits_callback(self, msg):

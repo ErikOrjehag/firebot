@@ -73,6 +73,8 @@ class ParticleFilter():
             w_good = self.w[inds_good]
 
             self.confidence += 0.02 * (w_good.sum() - self.confidence)
+            if self.confidence > 0.90:
+                self.initialized = True
 
             w_good_norm = normalize_weights(w_good)
 
