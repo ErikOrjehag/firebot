@@ -22,12 +22,12 @@ def generate_launch_description():
                 name="servo_node",
                 output="screen",
             ),
-            Node(
-                package="firebot_hw",
-                executable="mic_node",
-                name="mic_node",
-                output="screen",
-            ),
+            # Node(
+            #     package="firebot_hw",
+            #     executable="mic_node",
+            #     name="mic_node",
+            #     output="screen",
+            # ),
             Node(
                 package="firebot_ai",
                 executable="loc_node",
