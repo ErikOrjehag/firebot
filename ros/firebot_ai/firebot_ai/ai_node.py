@@ -80,7 +80,9 @@ class AiNode(Node):
         MAX_LINEAR = 0.08 * 2.0
         ts = time()
 
-        # self.dijkstras = np.array(kartor["1_till_0"]).T[::-1,::-1]
+        # b = np.array(rooms[0]["bounds"]) / 100.0
+        # g = np.array([(b[0] + b[1]) / 2, (b[2] + b[3]) / 2])
+        # self.dijkstras = firebot_common.dijkstras.dijkstras_search(self.distmap, g[0], g[1]) + 1.0 * np.clip(1.0 - self.distmap / (BODY_RADIUS*2), 0.0, 1.0) + np.array(kartor[f"{1}_till_{0}"]).T[::-1,::-1]
         # self.dijkstras_pub.publish(Float64MultiArray(data=list(self.dijkstras.flatten())))
         # exit()
 

@@ -2,7 +2,7 @@
 import numpy as np
 from math import pi, fabs, sqrt
 from firebot_common.calc_hits import calc_hits
-from firebot_common.constants import MAP_SIZE, BODY_RADIUS
+from firebot_common.constants import MAP_SIZE, BODY_RADIUS, SEARCH_CELL_SIZE, N_SEARCH_CELLS
 
 def normalize_weights(w):
     w += 0.01
@@ -23,6 +23,7 @@ class ParticleFilter():
 
         self.pos = np.empty((0, 2))
 
+        self.initialAreas = initialAreas
         for n, xmin, xmax, ymin, ymax in initialAreas:
             self.N += n
             posx = np.random.uniform(xmin, xmax, size=(n,1))
@@ -40,7 +41,9 @@ class ParticleFilter():
         self.kf_pos = None
         self.kf_angle = None
 
+        self.dijkstras = None
         self.confidence = 0.0
+        self.initialized = False
 
     def update(self, linear, angular, robot, walls):
         
@@ -84,7 +87,48 @@ class ParticleFilter():
                 self.angle[bad_i] = self.angle[good_i]+20.*pi/180.*np.random.randn(1)
             
             # Redo
-            posx = np.random.uniform(BODY_RADIUS, MAP_SIZE - BODY_RADIUS, size=(N_redo,1))
-            posy = np.random.uniform(BODY_RADIUS, MAP_SIZE - BODY_RADIUS, size=(N_redo,1))
-            self.pos[inds_redo] = pos = np.hstack((posx, posy))
+            new = np.empty((0, 2))
+            s = 0
+            if not self.initialized:
+                for i, (n, xmin, xmax, ymin, ymax) in enumerate(self.initialAreas):
+                    if i == len(self.initialAreas) - 1:
+                        N = N_redo - s
+                    else:
+                        N = int((n / len(self.w))*N_redo)
+                    s += N
+                    posx = np.random.uniform(xmin, xmax, size=(N,1))
+                    posy = np.random.uniform(ymin, ymax, size=(N,1))
+                    pos = np.hstack((posx, posy))
+                    new = np.concatenate((new, pos), axis=0)
+            else:
+                if self.dijkstras is not None:
+                    N_redo_left = N_redo
+                    i = 0
+                    while N_redo_left > 0:
+                        i += 1
+                        posx = np.random.uniform(BODY_RADIUS, MAP_SIZE - BODY_RADIUS, size=(N_redo_left,1))
+                        posy = np.random.uniform(BODY_RADIUS, MAP_SIZE - BODY_RADIUS, size=(N_redo_left,1))
+                        r = (posy / SEARCH_CELL_SIZE).astype(int)[:,0]
+                        c = (posx / SEARCH_CELL_SIZE).astype(int)[:,0]
+                        mask = np.logical_and.reduce((
+                            r >= 0,
+                            r < N_SEARCH_CELLS,
+                            c >= 0,
+                            c < N_SEARCH_CELLS,
+                            self.dijkstras[r, c] < 3.8
+                        ), dtype=bool)
+                        
+                        pos = np.hstack((posx, posy))
+                        pos = pos[mask]
+                        N = sum(mask)
+                        if N:
+                            new = np.concatenate((new, pos), axis=0)
+                            N_redo_left -= N
+                    # print(i)
+                else:
+                    posx = np.random.uniform(BODY_RADIUS, MAP_SIZE - BODY_RADIUS, size=(N_redo,1))
+                    posy = np.random.uniform(BODY_RADIUS, MAP_SIZE - BODY_RADIUS, size=(N_redo,1))
+                    new = np.hstack((posx, posy))
+
+            self.pos[inds_redo] = new
             self.angle[inds_redo] = np.random.uniform(0.0, 2.0*pi, size=N_redo)
