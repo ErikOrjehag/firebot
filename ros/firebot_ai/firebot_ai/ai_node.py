@@ -13,6 +13,7 @@ import firebot_common.wall_collision
 import firebot_common.dijkstras
 from math import cos, sin, pi, sqrt
 from firebot_common.data import rooms
+from collections import deque
 
 def signed_limit(value, limit) -> float:
     return np.sign(value) * min(abs(value), limit)
@@ -41,6 +42,8 @@ class AiNode(Node):
         self.look_for_candle = False
         self.candle_look_ts = None
         self.candle_snuffed = False
+
+        self.heat_buf = deque([0.0] * 10, maxlen=10)
 
         self.cmd_vel_pub = self.create_publisher(Twist, "cmd_vel", 1)
         self.snuff_pub = self.create_publisher(Bool, "snuff", 1)
@@ -71,8 +74,8 @@ class AiNode(Node):
     def run(self):
         
         SNUFF_DIST = 0.03
-        MAX_ANGULAR = 0.3
-        MAX_LINEAR = 0.08
+        MAX_ANGULAR = 0.3 * 2.0
+        MAX_LINEAR = 0.08 * 2.0
         ts = time()
 
         # self.dijkstras = firebot_common.dijkstras.dijkstras_search(self.distmap, 2.0, 2.05) + 3.0 * np.clip(1.0 - self.distmap / (BODY_RADIUS*2), 0.0, 1.0)
@@ -127,7 +130,8 @@ class AiNode(Node):
             # Heat sensor
             FLAME_HEAT = 60.0
             alphas = np.linspace(HEAT_FOV/2, -HEAT_FOV/2, 8)
-            if np.max(self.heat) > FLAME_HEAT:
+            self.heat_buf.append(np.max(self.heat))
+            if np.min(self.heat_buf) > FLAME_HEAT:
                 self.led_red_pub.publish(Bool(data=True))
                 self.get_logger().info("I saw a candle")
                 alpha = np.average(alphas, weights=self.heat)
@@ -187,16 +191,16 @@ class AiNode(Node):
                         msg = Twist()
                         if self.hits[0] < 0.15:
                             msg.linear.x = -0.05
-                        elif self.hits[1] < 0.05:
+                        elif self.hits[1] < 0.06:
                             msg.angular.z = -0.4
-                        elif self.hits[-1] < 0.05:
+                        elif self.hits[-1] < 0.06:
                             msg.angular.z = 0.4
                         else:
                             carrot_dir = firebot_common.dijkstras.flow(self.dijkstras, *self.pos)
                             robot_dir = np.array([cos(self.angle), sin(self.angle)])
                             alpha = angle_between(carrot_dir, robot_dir)
                             msg.angular.z = signed_limit(dt * 10.0 * alpha, MAX_ANGULAR)
-                            msg.linear.x = MAX_LINEAR * np.clip((MAX_ANGULAR/6 - abs(msg.angular.z)) / (MAX_ANGULAR/6), 0.3, 1)
+                            msg.linear.x = MAX_LINEAR * np.clip((MAX_ANGULAR/6 - abs(msg.angular.z)) / (MAX_ANGULAR/6), 0.1, 1)
                         self.cmd_vel_pub.publish(msg)
                 else:
                     self.get_logger().info(f"Localizing {self.confidence:.2f}", throttle_duration_sec=3.0)
