@@ -46,6 +46,8 @@ class AiNode(Node):
         self.candle_snuffed = False
         self.going_home = False
 
+        self.emcy = False
+
         self.heat_buf = deque([0.0] * 12, maxlen=12)
 
         self.cmd_vel_pub = self.create_publisher(Twist, "cmd_vel", 1)
@@ -61,11 +63,16 @@ class AiNode(Node):
         self.create_subscription(Float64, "confidence", self.confidence_callback, 1)
         self.create_subscription(Pose, "pose", self.pose_callback, 1)
 
+        self.create_subscription(Bool, "btn/red", self.btn_red_callback, 10)
+
         #self.create_timer(1.0, self.timer_callback)
 
     # def timer_callback(self):
     #     if self.dijkstras is not None:
     #         self.dijkstras_pub.publish(Float64MultiArray(data=list(self.dijkstras.flatten())))
+
+    def btn_red_callback(self, msg: Bool):
+        self.emcy = msg.data
 
     def confidence_callback(self, msg: Float64):
         self.confidence = msg.data
@@ -103,6 +110,10 @@ class AiNode(Node):
             ts = t
 
             if self.pos is None or self.angle is None:
+                continue
+
+            if self.emcy:
+                self.get_logger().warn("Emcy!")
                 continue
 
             if self.home is None:
